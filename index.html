@@ -14,7 +14,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getStorage, ref as storageRef, uploadString, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+  import { getStorage, ref as storageRef, uploadString, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
   const firebaseConfig = {
     apiKey: "AIzaSyAh_U2SfI-8mj5voLR17ZqYr3-EkywAHng",
     authDomain: "pymk-health.firebaseapp.com",
@@ -34,6 +34,7 @@
   window._storage = storage;
   window._storageRef = storageRef;
   window._uploadString = uploadString;
+  window._uploadBytes = uploadBytes;
   window._getDownloadURL = getDownloadURL;
   window._deleteObject = deleteObject;
   window._getDocs = getDocs;
@@ -404,12 +405,16 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="bs" style="font-size:13px;padding:7px 14px;" onclick="showPage('home')">← กลับ</button>
-      <button class="bg" style="font-size:13px;padding:7px 14px;" onclick="exportSingleExcel()">⬇ ดาวน์โหลด Excel</button>
       <button id="result-pdf-btn" style="font-size:13px;padding:7px 14px;background:#b7202b;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;" onclick="downloadResultPDF()">📄 ดาวน์โหลดผลตรวจ (PDF)</button>
     </div>
   </div>
   <div id="result-pdf-capture">
   <div id="result-content"></div>
+  <!-- ════ ไฟล์ผลตรวจแนบ (ให้ผู้เข้ารับบริการเห็นด้วย ไม่ใช่แค่แอดมิน) ════ -->
+  <div id="attached-file-section" class="hidden sc p-4 mb-4">
+    <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px;">📎 ไฟล์ผลตรวจแนบ</h3>
+    <div id="attached-file-content"></div>
+  </div>
   <!-- ════ ส่วนผลตรวจ Lab ════ -->
   <div id="lab-module-section" class="hidden">
     <div class="sc p-4 mb-2" style="background:#fdf3e0;border-color:#f0d896;">
@@ -451,6 +456,10 @@
   <!-- NCD Dashboard (ใหม่) -->
   <div id="ncd-dashboard" style="margin-bottom:12px;"></div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;" id="admin-stats"></div>
+  <div class="sc p-4" style="margin-bottom:12px;">
+    <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 12px;">📅 สถานะการนัดหมาย</h3>
+    <div id="appt-dashboard" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;"></div>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
     <div class="sc p-4">
       <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 12px;display:flex;align-items:center;gap:6px;">🏥 ยอดผู้ป่วยแต่ละโรคประจำตัว</h3>
@@ -480,8 +489,8 @@
           <th style="padding:10px 10px;text-align:center;font-size:13px;">8Q</th>
           <th style="padding:10px 10px;text-align:center;font-size:13px;">กลุ่มสี</th>
           <th style="padding:10px 10px;text-align:center;font-size:13px;">ผลตรวจแนบ</th>
-          <th style="padding:10px 10px;text-align:center;font-size:13px;">นัดหมาย</th>
-          <th style="padding:10px 10px;text-align:center;font-size:13px;">มาตามนัด</th>
+          <th style="padding:10px 10px;text-align:center;font-size:13px;">สถานะนัดหมาย</th>
+          <th style="padding:10px 10px;text-align:center;font-size:13px;">จัดการ</th>
         </tr>
       </thead>
       <tbody id="admin-tbody"></tbody>
@@ -531,6 +540,7 @@
       </div>
       <button onclick="clearPdfPreview()" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;">✕</button>
     </div>
+    <button id="pdf-undo-crop" onclick="useOriginalUncropped()" class="hidden" style="margin-top:6px;width:100%;background:none;border:1px dashed #d1d5db;color:#6b7280;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;">ระบบครอบตัดกรอบเอกสารให้อัตโนมัติ — ถ้าตัดผิด/ตกส่วนสำคัญ กดที่นี่เพื่อใช้ภาพเต็มแทน</button>
     <!-- Preview Lab -->
     <div id="pdf-lab-preview" class="hidden" style="margin-top:16px;border-top:2px solid #fdf3e0;padding-top:14px;">
       <div style="font-size:13px;font-weight:700;color:#7f1621;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
@@ -573,9 +583,12 @@
       <label class="fl">วันที่นัด</label>
       <input type="date" id="appt-date-input" class="fi">
     </div>
-    <div id="appt-note-wrap" style="margin-bottom:18px;">
+    <div id="appt-note-wrap" style="margin-bottom:14px;">
       <label class="fl">หมายเหตุ / แผนก</label>
       <input type="text" id="appt-note-input" class="fi" placeholder="เช่น พบแพทย์ทั่วไป, ตรวจซ้ำ">
+    </div>
+    <div id="appt-attended-wrap" style="margin-bottom:18px;">
+      <label class="cb"><input type="checkbox" id="appt-attended-input"> ✅ มาตามนัดแล้ว</label>
     </div>
     <div style="display:flex;gap:10px;">
       <button class="bs" style="flex:1;" onclick="closeAppt()">ยกเลิก</button>
@@ -911,7 +924,15 @@
   async function renderFromFile(file,containerId,gender){
     return renderInto(containerId,await file.arrayBuffer(),gender);
   }
-  global.LabModule={renderInto,renderFromFile,analyzeNCD,extractLab,pdfToText,imageToText,sourceToText};
+  // แสดงผลจากข้อมูล lab ที่วิเคราะห์และบันทึกไว้แล้ว (ไม่ต้องโหลด/อ่านไฟล์ซ้ำ)
+  // ใช้เมื่อเปิดดูผลตรวจซ้ำ เพื่อให้ข้อมูลตรงกับที่แดชบอร์ดและ PDF ใช้เสมอ
+  function renderFromData(containerId,lab,gender,ncd){
+    const el=document.getElementById(containerId);
+    if(!el)return;
+    if(!ncd) ncd=analyzeNCD(lab,gender,lab&&lab.age);
+    el.innerHTML=buildHTML(lab,gender,ncd);
+  }
+  global.LabModule={renderInto,renderFromFile,renderFromData,analyzeNCD,extractLab,pdfToText,imageToText,sourceToText};
 })(window);
 // ======= NCD DASHBOARD (Admin) =======
 window.renderAdminNcdDashboard = async function(records) {
@@ -1214,6 +1235,33 @@ async function deleteAdminFromFirebase(username){
   try {
     await window._deleteDoc(window._doc(window._db, 'hc_admins', username));
   } catch(e){ console.error('Delete admin error:', e); }
+}
+// ======= ลบรายการที่ลงทะเบียนซ้ำ =======
+async function deleteRecord(id){
+  const r=records.find(function(x){return x.id===id;});
+  if(!r)return;
+  const fullName=(r.prefix||'')+' '+(r.fname||'')+' '+(r.lname||'');
+  if(!confirm('ยืนยันลบข้อมูลของ "'+fullName.trim()+'" ?\nการลบนี้ไม่สามารถกู้คืนได้ (ใช้สำหรับกรณีลงทะเบียนซ้ำ)')) return;
+  try{
+    showLoadingOverlay('กำลังลบข้อมูล...');
+    // ลบไฟล์ผลตรวจที่แนบไว้ใน Storage ด้วย (ถ้ามี) เพื่อไม่ให้เป็นไฟล์ค้าง
+    if(r.pdfPath){
+      try{
+        const fileRef=window._storageRef(window._storage, r.pdfPath);
+        await window._deleteObject(fileRef);
+      }catch(e){ console.warn('ลบไฟล์แนบไม่สำเร็จ (อาจถูกลบไปแล้ว):', e); }
+    }
+    await window._deleteDoc(window._doc(window._db, 'hc_records', id));
+    records = records.filter(function(x){return x.id!==id;});
+    window.__allRecords = records;
+    hideLoadingOverlay();
+    renderAdmin();
+    renderAdminNcdDashboard(records);
+  }catch(e){
+    hideLoadingOverlay();
+    console.error('Delete record error:', e);
+    alert('❌ ลบข้อมูลไม่สำเร็จ: '+e.message);
+  }
 }
 // ======= DOB =======
 const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -1673,16 +1721,45 @@ function renderResult(r){
     +'</div></div>'
     +buildLifestyleAdviceHTML(r);
   // แสดงผล Lab Module ถ้ามี PDF
+  // ════ ไฟล์ผลตรวจแนบ — แสดงให้ทุกคนเห็น (ผู้เข้ารับบริการดูได้เช่นเดียวกับแอดมิน) ════
+  const attSection = document.getElementById('attached-file-section');
+  const attContent = document.getElementById('attached-file-content');
+  if(r.pdfData){
+    attSection.classList.remove('hidden');
+    if(r.resultFileType==='image'){
+      attContent.innerHTML =
+        '<img src="'+r.pdfData+'" alt="ไฟล์ผลตรวจแนบ" style="max-width:100%;max-height:520px;display:block;margin:0 auto;border-radius:8px;border:1px solid #e5e7eb;cursor:zoom-in;" onclick="viewCurrentResultFile()">'
+        +'<p style="font-size:12px;color:#9ca3af;margin:8px 0 0;text-align:center;">คลิกที่ภาพเพื่อดูขนาดเต็ม'+(r.pdfName?' • '+r.pdfName:'')+'</p>';
+    } else {
+      attContent.innerHTML =
+        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+        +'<button class="bp" style="font-size:13px;padding:8px 18px;" onclick="viewCurrentResultFile()">👁️ เปิดดูไฟล์ผลตรวจ (PDF)</button>'
+        +(r.pdfName?'<span style="font-size:13px;color:#6b7280;">'+r.pdfName+'</span>':'')
+        +'</div>';
+    }
+  } else {
+    attSection.classList.add('hidden');
+    attContent.innerHTML='';
+  }
   const labSection = document.getElementById('lab-module-section');
   const labContainer = document.getElementById('lab-result-container');
-  if(r.pdfData && window.LabModule){
+  const gender = r.gender === '1' ? 'M' : 'F';
+  if(r.lab && window.LabModule){
+    // มีผลวิเคราะห์ที่บันทึกไว้แล้ว (ทำตอนแนบไฟล์) — แสดงจากข้อมูลนี้โดยตรง
+    // ไม่ต้องโหลด/อ่านไฟล์ซ้ำ จึงไม่มีปัญหาข้อมูลหายหรือไม่ตรงกับแดชบอร์ด/PDF ที่ดาวน์โหลด
+    labSection.classList.remove('hidden');
+    window.LabModule.renderFromData('lab-result-container', r.lab, gender, r.ncdAnalysis);
+    window._labRenderPromise = null;
+  } else if(r.pdfData && window.LabModule){
+    // กรณีเก่าที่ยังไม่มีผลวิเคราะห์บันทึกไว้ (หรือกำลังวิเคราะห์อยู่เบื้องหลัง) — อ่านไฟล์แบบสดๆ ไปก่อน
     labSection.classList.remove('hidden');
     labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
-    const gender = r.gender === '1' ? 'M' : 'F';
-    window.LabModule.renderInto('lab-result-container', r.pdfData, gender, r.resultFileType||'pdf');
+    // เก็บ Promise ไว้ให้ downloadResultPDF() รอจนวิเคราะห์เสร็จก่อนจับภาพ PDF
+    window._labRenderPromise = window.LabModule.renderInto('lab-result-container', r.pdfData, gender, r.resultFileType||'pdf');
   } else {
     labSection.classList.add('hidden');
     labContainer.innerHTML = '';
+    window._labRenderPromise = null;
   }
 }
 // ======= ADMIN RENDER =======
@@ -1699,6 +1776,18 @@ function renderAdmin(){
     ['มาพบแพทย์ตามนัดแล้ว',attended,'#16a34a','#f0fdf4'],
   ].map(function(x){
     return '<div class="sc p-4" style="background:'+x[3]+';"><div style="font-size:12px;color:'+x[2]+';font-weight:600;">'+x[0]+'</div><div style="font-size:28px;font-weight:800;color:'+x[2]+';">'+x[1]+'</div></div>';
+  }).join('');
+  const apptHasNotAttended=records.filter(function(r){return r.appointment&&r.appointment.type==='appt'&&!r.appointment.attended;}).length;
+  const apptAttended=records.filter(function(r){return r.appointment&&r.appointment.type==='appt'&&r.appointment.attended;}).length;
+  const apptNone=records.filter(function(r){return !r.appointment||r.appointment.type!=='appt';}).length;
+  document.getElementById('appt-dashboard').innerHTML=[
+    ['📅 มีนัด (ยังไม่มา)',apptHasNotAttended,'#b7202b','#fdf3e0'],
+    ['✅ มาตามนัด',apptAttended,'#166534','#dcfce7'],
+    ['— ไม่มีนัด',apptNone,'#6b7280','#f3f4f6'],
+  ].map(function(x){
+    return '<div style="background:'+x[3]+';border-radius:10px;padding:10px;text-align:center;">'
+      +'<div style="font-size:11px;color:'+x[2]+';font-weight:600;margin-bottom:4px;">'+x[0]+'</div>'
+      +'<div style="font-size:26px;font-weight:800;color:'+x[2]+';">'+x[1]+'</div></div>';
   }).join('');
   const ncdNames=['ความดันโลหิตสูง','เบาหวาน','โรคหัวใจและหลอดเลือด','ไขมันในเลือดสูง'];
   const ncdColors=['#dc2626','#d97706','#be123c','#7c3aed'];
@@ -1771,24 +1860,22 @@ function renderAdmin(){
     const q8tag=q8===0?'tn':q8<=8?'tw':'ta';
     const hasPdf=r.pdfData;
     const pdfBadge=hasPdf
-      ?'<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="ดูไฟล์ + วิเคราะห์ Lab">🔬 Lab</button>'
+      ?'<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:'+(r._uploading?'#fef9c3':'#dcfce7')+';color:'+(r._uploading?'#92400e':'#166534')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="ดูไฟล์ + วิเคราะห์ Lab">'+(r._uploading?'⏳ กำลังอัพโหลด':'🔬 Lab')+'</button>'
         +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>'
       :'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fef9c3;color:#92400e;border:1.5px dashed #fcd34d;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;">📎 แนบผลตรวจ</button>';
     const appt=r.appointment;
-    let apptBadge='';
-    if(appt&&appt.type==='appt'&&appt.date){
-      apptBadge='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'
-        +'<span style="background:#fdf3e0;color:#b7202b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">📅 '+appt.date+'</span>'
-        +(appt.note?'<span style="font-size:10px;color:#6b7280;">'+appt.note+'</span>':'')+'</div>';
-    } else {
-      apptBadge='<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:12px;font-size:11px;">ไม่นัด</span>';
-    }
     const hasAppt=appt&&appt.type==='appt'&&appt.date;
-    let attendedBadge='<span style="color:#d1d5db;font-size:12px;">—</span>';
-    if(hasAppt){
-      attendedBadge=appt.attended
-        ?'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;cursor:pointer;" onclick="toggleAttended(\''+r.id+'\')">✅ มาแล้ว</span>'
-        :'<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;cursor:pointer;" onclick="toggleAttended(\''+r.id+'\')">❌ ยังไม่มา</span>';
+    let apptStatusBadge='';
+    if(hasAppt&&appt.attended){
+      apptStatusBadge='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'
+        +'<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">✅ มาตามนัด</span>'
+        +'<span style="font-size:10px;color:#6b7280;">📅 '+appt.date+'</span></div>';
+    } else if(hasAppt){
+      apptStatusBadge='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'
+        +'<span style="background:#fdf3e0;color:#b7202b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">📅 มีนัด</span>'
+        +'<span style="font-size:10px;color:#6b7280;">'+appt.date+(appt.note?' • '+appt.note:'')+'</span></div>';
+    } else {
+      apptStatusBadge='<span style="background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:12px;font-size:11px;">ไม่มีนัด</span>';
     }
     return '<tr style="border-bottom:1px solid #f3f4f6;'+(i%2?'background:#f9fafb':'')+'">'
       +'<td style="padding:8px 10px;font-size:13px;text-align:center;color:#9ca3af;font-weight:600;">'+(i+1)+'</td>'
@@ -1800,8 +1887,8 @@ function renderAdmin(){
       +'<td style="padding:8px 10px;font-size:13px;text-align:center;"><span class="rt '+q8tag+'">'+r.q8+'</span></td>'
       +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+({green:'🟢',yellow:'🟡',red:'🔴'}[r.colorGroup]||'')+'</td>'
       +'<td style="padding:8px 10px;text-align:center;">'+pdfBadge+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;"><button onclick="openAppt(\''+r.id+'\')" style="background:none;border:none;cursor:pointer;padding:2px;">'+apptBadge+'</button></td>'
-      +'<td style="padding:8px 10px;text-align:center;">'+attendedBadge+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;"><button onclick="openAppt(\''+r.id+'\')" title="แก้ไขสถานะนัดหมาย" style="background:none;border:none;cursor:pointer;padding:2px;">'+apptStatusBadge+'</button></td>'
+      +'<td style="padding:8px 10px;text-align:center;"><button onclick="deleteRecord(\''+r.id+'\')" title="ลบข้อมูล (สำหรับรายการลงทะเบียนซ้ำ)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🗑️</button></td>'
       +'</tr>';
   }).join('');
 }
@@ -1828,10 +1915,12 @@ function openAppt(id){
     document.querySelector('input[name="appt-type"][value="appt"]').checked=true;
     document.getElementById('appt-date-input').value=appt.date||'';
     document.getElementById('appt-note-input').value=appt.note||'';
+    document.getElementById('appt-attended-input').checked=!!appt.attended;
   } else {
     document.querySelector('input[name="appt-type"][value="none"]').checked=true;
     document.getElementById('appt-date-input').value='';
     document.getElementById('appt-note-input').value='';
+    document.getElementById('appt-attended-input').checked=false;
   }
   toggleApptDate();
   document.getElementById('modal-appt').classList.remove('hidden');
@@ -1841,6 +1930,7 @@ function toggleApptDate(){
   const show=val&&val.value==='appt';
   document.getElementById('appt-date-wrap').style.display=show?'':'none';
   document.getElementById('appt-note-wrap').style.display=show?'':'none';
+  document.getElementById('appt-attended-wrap').style.display=show?'':'none';
 }
 function closeAppt(){document.getElementById('modal-appt').classList.add('hidden');}
 function saveAppt(){
@@ -1851,7 +1941,7 @@ function saveAppt(){
   if(typeEl.value==='appt'){
     const d=document.getElementById('appt-date-input').value;
     if(!d){alert('กรุณาเลือกวันที่นัด');return;}
-    r.appointment={type:'appt',date:d,note:document.getElementById('appt-note-input').value.trim()};
+    r.appointment={type:'appt',date:d,note:document.getElementById('appt-note-input').value.trim(),attended:document.getElementById('appt-attended-input').checked};
   } else {
     r.appointment={type:'none'};
   }
@@ -1867,10 +1957,10 @@ function toggleAttended(id){
   renderAdmin();
 }
 // ======= PDF MODAL =======
-let currentPdfModalId=null, pendingPdfBase64=null, pendingPdfName=null, pendingPdfType=null;
+let currentPdfModalId=null, pendingPdfBase64=null, pendingPdfName=null, pendingPdfType=null, pendingPdfOriginal=null;
 function openPdfModal(id){
   currentPdfModalId=id;
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null;
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingPdfOriginal=null;
   const r=records.find(function(x){return x.id===id;});
   if(!r)return;
   document.getElementById('pdf-person-name').textContent=r.prefix+' '+r.fname+' '+r.lname;
@@ -1881,6 +1971,8 @@ function openPdfModal(id){
   document.getElementById('pdf-lab-preview-content').innerHTML='';
   document.getElementById('pdf-file-input').value='';
   document.getElementById('pdf-camera-input').value='';
+  const undoBtn=document.getElementById('pdf-undo-crop');
+  if(undoBtn) undoBtn.classList.add('hidden');
   if(r.pdfData){
     document.getElementById('pdf-current-wrap').classList.remove('hidden');
     document.getElementById('pdf-current-name').textContent=r.pdfName||'ไฟล์ผลตรวจ';
@@ -1893,14 +1985,135 @@ function openPdfModal(id){
 }
 function closePdfModal(){ document.getElementById('modal-pdf').classList.add('hidden'); }
 function clearPdfPreview(){
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null;
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingPdfOriginal=null;
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
   document.getElementById('pdf-preview-thumb').classList.add('hidden');
   document.getElementById('pdf-lab-preview').classList.add('hidden');
   document.getElementById('pdf-lab-preview-content').innerHTML='';
+  const undoBtn=document.getElementById('pdf-undo-crop');
+  if(undoBtn) undoBtn.classList.add('hidden');
 }
 function handlePdfSelect(evt){ processPdfFile(evt.target.files[0]); }
 function handlePdfDrop(evt){ evt.preventDefault(); if(evt.dataTransfer.files[0]) processPdfFile(evt.dataTransfer.files[0]); }
+// ย่อขนาดรูปภาพ (เช่น รูปถ่ายจากกล้องมือถือที่มักมีขนาดใหญ่มาก 3000-4000px)
+// ให้เหลือด้านยาวสุดไม่เกิน maxDim px ก่อนอัพโหลด/OCR — ช่วยให้ "อัพโหลด" และ "วิเคราะห์ผล" เร็วขึ้นมาก
+// โดยยังคมชัดพอสำหรับอ่านตัวเลขผลตรวจ
+function resizeImageDataUrl(dataUrl, maxDim, quality){
+  maxDim = maxDim || 1600; quality = quality || 0.85;
+  return new Promise(function(resolve){
+    const img=new Image();
+    img.onload=function(){
+      let w=img.width, h=img.height;
+      if(w<=maxDim && h<=maxDim){ resolve(dataUrl); return; } // ไม่ต้องย่อถ้าเล็กอยู่แล้ว
+      const scale=maxDim/Math.max(w,h);
+      w=Math.round(w*scale); h=Math.round(h*scale);
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror=function(){ resolve(dataUrl); }; // ย่อไม่สำเร็จ ใช้ไฟล์เดิม
+    img.src=dataUrl;
+  });
+}
+// ครอบตัดภาพให้เหลือเฉพาะ "ส่วนเอกสาร" อัตโนมัติ — ใช้กรณีเจ้าหน้าที่แคปหน้าจอ (เช่น เปิด PDF ใน Google Drive)
+// แล้วแนบภาพทั้งหน้าจอมา ซึ่งจะติดแถบสถานะมือถือ/แถบเครื่องมือแอป/พื้นหลังสีเข้มมาด้วย
+// หลักการ: หาก้อนพิกเซล "โทนขาว" ที่เชื่อมต่อกันเป็นก้อนใหญ่ที่สุดในภาพ (คือหน้ากระดาษ A4 สีขาว)
+// แล้วครอบตัดเหลือเฉพาะกรอบสี่เหลี่ยมของก้อนนั้น ถ้าตรวจไม่พบชัดเจนจะคืนภาพเดิมโดยไม่ตัด (ปลอดภัยไว้ก่อน)
+function autoCropDocument(dataUrl){
+  return new Promise(function(resolve){
+    const img=new Image();
+    img.onload=function(){
+      try{
+        const AW=320; // ความกว้างที่ใช้วิเคราะห์ (ย่อลงเพื่อความเร็ว)
+        const scale=AW/img.width;
+        const AH=Math.max(1,Math.round(img.height*scale));
+        const c=document.createElement('canvas');
+        c.width=AW; c.height=AH;
+        const ctx=c.getContext('2d');
+        ctx.drawImage(img,0,0,AW,AH);
+        const data=ctx.getImageData(0,0,AW,AH).data;
+        const whiteMask=new Uint8Array(AW*AH);
+        for(let y=0;y<AH;y++){
+          for(let x=0;x<AW;x++){
+            const idx=(y*AW+x)*4;
+            const r=data[idx],g=data[idx+1],b=data[idx+2];
+            const bright=(r+g+b)/3;
+            const sat=Math.max(r,g,b)-Math.min(r,g,b);
+            // โทนขาว/เทาอ่อน (พื้นกระดาษ) = สว่างมาก และไม่ฉูดฉาด(สีไม่จัด)
+            if(bright>195 && sat<45) whiteMask[y*AW+x]=1;
+          }
+        }
+        // หาก้อนพิกเซลขาวที่เชื่อมกัน (connected component) ที่ใหญ่ที่สุด ด้วย BFS
+        const visited=new Uint8Array(AW*AH);
+        let best={area:0,minX:0,minY:0,maxX:AW-1,maxY:AH-1};
+        const qx=new Int32Array(AW*AH), qy=new Int32Array(AW*AH);
+        for(let y=0;y<AH;y++){
+          for(let x=0;x<AW;x++){
+            const idx0=y*AW+x;
+            if(!whiteMask[idx0]||visited[idx0])continue;
+            let head=0,tail=0;
+            qx[tail]=x;qy[tail]=y;tail++;visited[idx0]=1;
+            let area=0,minX=x,maxX=x,minY=y,maxY=y;
+            while(head<tail){
+              const cx=qx[head],cy=qy[head];head++;
+              area++;
+              if(cx<minX)minX=cx; if(cx>maxX)maxX=cx;
+              if(cy<minY)minY=cy; if(cy>maxY)maxY=cy;
+              const nb=[[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]];
+              for(let k=0;k<4;k++){
+                const nx=nb[k][0],ny=nb[k][1];
+                if(nx>=0&&nx<AW&&ny>=0&&ny<AH){
+                  const nidx=ny*AW+nx;
+                  if(whiteMask[nidx]&&!visited[nidx]){
+                    visited[nidx]=1; qx[tail]=nx; qy[tail]=ny; tail++;
+                  }
+                }
+              }
+            }
+            if(area>best.area) best={area,minX,minY,maxX,maxY};
+          }
+        }
+        const totalPx=AW*AH;
+        const boxW=best.maxX-best.minX+1, boxH=best.maxY-best.minY+1;
+        // ต้องเจอก้อนที่ใหญ่พอสมควร (ไม่ใช่จุดขาวเล็กๆ) และไม่ใช่ทั้งภาพอยู่แล้ว(ไม่จำเป็นต้องตัด)
+        const coversWholeImage = best.minX<=1 && best.minY<=1 && best.maxX>=AW-2 && best.maxY>=AH-2;
+        if(best.area < totalPx*0.12 || boxW<10 || boxH<10 || coversWholeImage){
+          resolve(dataUrl); return; // ตรวจไม่พบเอกสารเด่นชัด ใช้ภาพเดิม ไม่ตัด
+        }
+        // แปลงพิกัดกลับเป็นภาพจริง พร้อมเผื่อขอบเล็กน้อย
+        const fx=img.width/AW, fy=img.height/AH;
+        let cropX=Math.floor(best.minX*fx), cropY=Math.floor(best.minY*fy);
+        let cropW=Math.ceil(boxW*fx), cropH=Math.ceil(boxH*fy);
+        const padX=Math.round(cropW*0.015), padY=Math.round(cropH*0.015);
+        cropX=Math.max(0,cropX-padX); cropY=Math.max(0,cropY-padY);
+        cropW=Math.min(img.width-cropX, cropW+2*padX);
+        cropH=Math.min(img.height-cropY, cropH+2*padY);
+        const out=document.createElement('canvas');
+        out.width=cropW; out.height=cropH;
+        out.getContext('2d').drawImage(img,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
+        resolve(out.toDataURL('image/jpeg',0.92));
+      }catch(e){
+        console.error('autoCropDocument error:', e);
+        resolve(dataUrl); // ผิดพลาด ใช้ภาพเดิมไว้ก่อน ไม่เสี่ยงตัดพัง
+      }
+    };
+    img.onerror=function(){ resolve(dataUrl); };
+    img.src=dataUrl;
+  });
+}
+async function useOriginalUncropped(){
+  if(!pendingPdfOriginal) return;
+  document.getElementById('pdf-preview-size').textContent='กำลังย่อขนาดรูป...';
+  const dataUrl=await resizeImageDataUrl(pendingPdfOriginal, 1600, 0.85);
+  pendingPdfBase64=dataUrl;
+  const approxKB=Math.round((dataUrl.length*0.75)/1024);
+  document.getElementById('pdf-preview-size').textContent=approxKB+' KB (ใช้ภาพเต็ม ไม่ครอบตัด)';
+  document.getElementById('pdf-preview-thumb').src=dataUrl;
+  document.getElementById('pdf-undo-crop').classList.add('hidden');
+  previewLabFromFile(pendingPdfBase64, currentPdfModalId, pendingPdfType);
+}
 function processPdfFile(file){
   if(!file){ return; }
   const isPdf = file.type==='application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -1915,12 +2128,27 @@ function processPdfFile(file){
   }
   document.getElementById('pdf-err').classList.add('hidden');
   const reader=new FileReader();
-  reader.onload=function(e){
-    pendingPdfBase64=e.target.result;
+  reader.onload=async function(e){
+    let dataUrl=e.target.result;
     pendingPdfName=file.name;
     pendingPdfType=isImage?'image':'pdf';
+    pendingPdfOriginal=null;
+    if(isImage){
+      document.getElementById('pdf-preview-size').textContent='กำลังครอบตัดกรอบเอกสาร...';
+      pendingPdfOriginal=dataUrl; // เก็บภาพเต็มไว้เผื่อครอบตัดผิดพลาด จะได้กดยกเลิกได้
+      const cropped=await autoCropDocument(dataUrl);
+      const wasCropped = cropped!==dataUrl;
+      dataUrl=cropped;
+      document.getElementById('pdf-preview-size').textContent='กำลังย่อขนาดรูป...';
+      dataUrl=await resizeImageDataUrl(dataUrl, 1600, 0.85);
+      const undoBtn=document.getElementById('pdf-undo-crop');
+      if(undoBtn) undoBtn.classList.toggle('hidden', !wasCropped);
+    }
+    pendingPdfBase64=dataUrl;
     document.getElementById('pdf-preview-name').textContent=file.name;
-    document.getElementById('pdf-preview-size').textContent=Math.round(file.size/1024)+' KB';
+    // ขนาดหลังย่อ (โดยประมาณจากความยาว base64)
+    const approxKB=Math.round((dataUrl.length*0.75)/1024);
+    document.getElementById('pdf-preview-size').textContent=approxKB+' KB'+(isImage?' (ครอบตัด+ย่อขนาดแล้ว)':'');
     const thumb=document.getElementById('pdf-preview-thumb');
     const iconEl=document.getElementById('pdf-preview-icon');
     if(isImage){
@@ -1951,44 +2179,74 @@ function previewLabFromFile(fileBase64, recordId, fileType){
     .then(function(){ loadingEl.textContent='✅ วิเคราะห์สำเร็จ'; })
     .catch(function(){ loadingEl.textContent='⚠️ อ่านข้อมูลได้บางส่วน'; });
 }
-async function savePdf(){
+// แปลง dataURL -> Blob แบบ local ล้วนๆ (ไม่มีการเชื่อมต่อเครือข่าย จึงเร็วมาก ไม่ถึง 1 วินาที)
+function dataUrlToBlob(dataUrl){
+  const arr=dataUrl.split(',');
+  const mimeMatch=arr[0].match(/:(.*?);/);
+  const mime=mimeMatch?mimeMatch[1]:'application/octet-stream';
+  const bstr=atob(arr[1]);
+  let n=bstr.length;
+  const u8=new Uint8Array(n);
+  while(n--){ u8[n]=bstr.charCodeAt(n); }
+  return new Blob([u8],{type:mime});
+}
+function savePdf(){
   if(!pendingPdfBase64){ alert('กรุณาแนบไฟล์หรือถ่ายภาพผลตรวจ'); return; }
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
-  const saveBtn=document.getElementById('pdf-save-btn');
-  const origLabel=saveBtn?saveBtn.textContent:'';
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='⏳ กำลังอัปโหลด...';}
-  try{
-    const ext = pendingPdfType==='image' ? (pendingPdfName.split('.').pop()||'jpg') : 'pdf';
-    const path='pdfresults/'+r.id+'.'+ext;
-    const fileRef=window._storageRef(window._storage, path);
-    await window._uploadString(fileRef, pendingPdfBase64, 'data_url');
-    const url=await window._getDownloadURL(fileRef);
-    r.pdfData=url; r.pdfName=pendingPdfName; r.pdfDate=new Date().toLocaleString('th-TH'); r.pdfPath=path; r.resultFileType=pendingPdfType;
-    // ดึงข้อมูลผลตรวจ Lab จากไฟล์ (PDF หรือรูปภาพ/OCR) มาบันทึกลงในเรคคอร์ด เพื่อใช้ใน Export รง.ผสต.11
-    if(window.LabModule){
-      try{
-        const gender = r.gender==='1' ? 'M' : 'F';
-        const text = await window.LabModule.sourceToText(pendingPdfBase64, pendingPdfType);
-        const lab = window.LabModule.extractLab(text, gender);
-        r.lab = lab;
-        const ncd = window.LabModule.analyzeNCD(lab, gender, r.age);
-        const highest = ncd.reduce(function(acc,d){
-          const order={high:3,medium:2,low:1};
-          return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
-        }, 'low');
-        r.ncdRisk = highest;
-      }catch(e){ console.error('Lab extract error:', e); }
-    }
-    await updateRecordInFirebase(r);
-    closePdfModal();
-    renderAdmin();
-  }catch(e){
-    console.error('Upload error:', e);
-    alert('❌ อัปโหลดไฟล์ไม่สำเร็จ: '+e.message);
-  }finally{
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=origLabel;}
-  }
+  // เก็บค่าที่ต้องใช้ต่อไว้ก่อน เพราะตัวแปร pending* จะถูกเคลียร์เมื่อปิด modal
+  const fileBase64=pendingPdfBase64, fileType=pendingPdfType, fileName=pendingPdfName;
+  const ext = fileType==='image' ? (fileName.split('.').pop()||'jpg') : 'pdf';
+  const path='pdfresults/'+r.id+'.'+ext;
+  const blob=dataUrlToBlob(fileBase64); // งานนี้เป็น local ล้วนๆ ไม่รอเน็ตเวิร์ก
+  const localPreviewUrl=URL.createObjectURL(blob); // ดูตัวอย่างได้ทันทีระหว่างรออัพโหลดจริง
+
+  // ═══ 1) อัปเดตหน้าจอ + ปิด modal ทันที (ใช้เวลา < 1 วินาที เพราะเป็นงาน local ทั้งหมด) ═══
+  r.pdfData=localPreviewUrl; r.pdfName=fileName; r.pdfDate=new Date().toLocaleString('th-TH');
+  r.pdfPath=path; r.resultFileType=fileType; r._uploading=true;
+  closePdfModal();
+  renderAdmin();
+
+  // ═══ 2) อัพโหลดไฟล์จริงขึ้น Firebase Storage แบบเบื้องหลัง (ไม่บล็อกผู้ใช้) ═══
+  const fileRef=window._storageRef(window._storage, path);
+  window._uploadBytes(fileRef, blob)
+    .then(function(){ return window._getDownloadURL(fileRef); })
+    .then(function(url){
+      URL.revokeObjectURL(localPreviewUrl);
+      r.pdfData=url; r._uploading=false;
+      return updateRecordInFirebase(r);
+    })
+    .then(function(){
+      if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
+      // ═══ 3) วิเคราะห์ผล Lab (อ่าน PDF/OCR รูปภาพ) แบบเบื้องหลังต่อ — ไม่บล็อกผู้ใช้เช่นกัน ═══
+      if(!window.LabModule) return;
+      return window.LabModule.sourceToText(fileBase64, fileType)
+        .then(function(text){
+          const gender = r.gender==='1' ? 'M' : 'F';
+          const lab = window.LabModule.extractLab(text, gender);
+          r.lab = lab;
+          const ncd = window.LabModule.analyzeNCD(lab, gender, r.age);
+          r.ncdAnalysis = ncd; // เก็บผลวิเคราะห์เต็มไว้ ใช้แสดงผลซ้ำได้โดยไม่ต้องอ่านไฟล์ใหม่
+          const highest = ncd.reduce(function(acc,d){
+            const order={high:3,medium:2,low:1};
+            return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
+          }, 'low');
+          r.ncdRisk = highest;
+          return updateRecordInFirebase(r);
+        })
+        .then(function(){
+          if(!document.getElementById('page-admin').classList.contains('hidden')){
+            renderAdmin();
+            renderAdminNcdDashboard(records);
+          }
+        });
+    })
+    .catch(function(e){
+      console.error('Upload error (background):', e);
+      r._uploading=false;
+      alert('❌ อัปโหลดไฟล์ขึ้นเซิร์ฟเวอร์ไม่สำเร็จ (แต่ยังดูตัวอย่างในเครื่องนี้ได้ชั่วคราว) กรุณากดแนบไฟล์ใหม่อีกครั้ง: '+e.message);
+      if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
+    });
 }
 async function removePdf(){
   const r=records.find(function(x){return x.id===currentPdfModalId;});
@@ -1998,13 +2256,23 @@ async function removePdf(){
       const fileRef=window._storageRef(window._storage, r.pdfPath);
       await window._deleteObject(fileRef).catch(function(){});
     }
-    delete r.pdfData; delete r.pdfName; delete r.pdfDate; delete r.pdfPath; delete r.lab; delete r.ncdRisk; delete r.resultFileType;
+    delete r.pdfData; delete r.pdfName; delete r.pdfDate; delete r.pdfPath; delete r.lab; delete r.ncdRisk; delete r.ncdAnalysis; delete r.resultFileType;
     await updateRecordInFirebase(r);
     document.getElementById('pdf-current-wrap').classList.add('hidden');
     renderAdmin();
   }catch(e){
     console.error('File remove error:', e);
     alert('❌ ลบไฟล์ไม่สำเร็จ: '+e.message);
+  }
+}
+function viewCurrentResultFile(){
+  const r=currentRecord;
+  if(!r||!r.pdfData)return;
+  const w=window.open();
+  if(r.resultFileType==='image'){
+    w.document.write('<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111;margin:0;"><img src="'+r.pdfData+'" style="max-width:100%;max-height:100vh;"></div>');
+  } else {
+    w.document.write('<iframe src="'+r.pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
   }
 }
 function viewPdfCurrent(){
@@ -2034,6 +2302,13 @@ async function downloadResultPDF(){
   const origLabel=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='⏳ กำลังสร้าง PDF...';}
   try{
+    // รอให้การวิเคราะห์ผลตรวจ Lab (OCR/PDF parsing) เสร็จสมบูรณ์ก่อน เพื่อไม่ให้ PDF ที่ดาวน์โหลด
+    // จับภาพได้แค่ข้อความ "กำลังวิเคราะห์..." แทนผลจริง
+    if(window._labRenderPromise){
+      if(btn){btn.textContent='⏳ กำลังรอผลวิเคราะห์ Lab...';}
+      try{ await window._labRenderPromise; }catch(e){ /* แสดงข้อความ error ในหน้าอยู่แล้ว ไปต่อได้ */ }
+      if(btn){btn.textContent='⏳ กำลังสร้าง PDF...';}
+    }
     const src=document.getElementById('result-pdf-capture');
     if(!src) throw new Error('ไม่พบเนื้อหาผลตรวจ');
     // สร้างสำเนาชั่วคราวเพื่อจัดความกว้างให้เหมาะกับการพิมพ์ PDF โดยไม่กระทบหน้าจอจริง
