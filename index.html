@@ -521,7 +521,7 @@
         <div style="font-size:28px;margin-bottom:6px;">📂</div>
         <div style="font-size:13px;font-weight:600;color:#374151;">แนบไฟล์</div>
         <div style="font-size:11px;color:#9ca3af;margin-top:2px;">รูปภาพ หรือ PDF</div>
-        <input type="file" id="pdf-file-input" accept=".pdf,image/*" style="display:none;" onchange="handlePdfSelect(event)">
+        <input type="file" id="pdf-file-input" accept=".pdf,image/*" multiple style="display:none;" onchange="handlePdfSelect(event)">
       </div>
       <div style="border:2px dashed #f0d896;background:#fdf3e0;border-radius:10px;padding:18px 10px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('pdf-camera-input').click()">
         <div style="font-size:28px;margin-bottom:6px;">📷</div>
@@ -530,7 +530,7 @@
         <input type="file" id="pdf-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="handlePdfSelect(event)">
       </div>
     </div>
-    <div style="font-size:11px;color:#9ca3af;text-align:center;margin-bottom:6px;">รองรับไฟล์ .pdf, .jpg, .png ขนาดไม่เกิน 10MB</div>
+    <div style="font-size:11px;color:#9ca3af;text-align:center;margin-bottom:6px;">รองรับไฟล์ .pdf, .jpg, .png ขนาดไม่เกิน 10MB ต่อไฟล์ — เลือกได้หลายรูป เช่น ผลตรวจ 1-2 หน้า</div>
     <div id="pdf-preview-wrap" class="hidden" style="margin-top:8px;padding:10px 14px;background:#fdf3e0;border:1px solid #f0d896;border-radius:10px;display:flex;align-items:center;gap:10px;">
       <img id="pdf-preview-thumb" class="hidden" style="width:42px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;">
       <span id="pdf-preview-icon" style="font-size:22px;">📄</span>
@@ -540,6 +540,7 @@
       </div>
       <button onclick="clearPdfPreview()" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;">✕</button>
     </div>
+    <div id="pdf-preview-images" class="hidden" style="margin-top:8px;padding:10px 14px;background:#fdf3e0;border:1px solid #f0d896;border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"></div>
     <button id="pdf-undo-crop" onclick="useOriginalUncropped()" class="hidden" style="margin-top:6px;width:100%;background:none;border:1px dashed #d1d5db;color:#6b7280;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;">ระบบครอบตัดกรอบเอกสารให้อัตโนมัติ — ถ้าตัดผิด/ตกส่วนสำคัญ กดที่นี่เพื่อใช้ภาพเต็มแทน</button>
     <!-- Preview Lab -->
     <div id="pdf-lab-preview" class="hidden" style="margin-top:16px;border-top:2px solid #fdf3e0;padding-top:14px;">
@@ -924,6 +925,26 @@
   async function renderFromFile(file,containerId,gender){
     return renderInto(containerId,await file.arrayBuffer(),gender);
   }
+  // อ่าน+วิเคราะห์จากหลายไฟล์/รูปรวมกัน (เช่น ผลตรวจ 2 หน้า) แล้วรวมข้อความก่อนสกัดค่า
+  async function renderFromSources(containerId,srcs,gender,fileType){
+    const el=document.getElementById(containerId);
+    if(!el)return;
+    el.innerHTML='<p style="color:#888;font-size:14px;padding:1rem;text-align:center">⏳ '+(fileType==='image'?'กำลังอ่านภาพ (OCR)...':'กำลังอ่านผลตรวจ...')+'</p>';
+    try{
+      let text='';
+      for(const src of srcs){ text += (await sourceToText(src,fileType)) + '\n'; }
+      let g=gender;
+      if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
+      const lab=extractLab(text,g);
+      if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
+      const ncd=analyzeNCD(lab,gender,lab.age);
+      el.innerHTML=buildHTML(lab,gender,ncd);
+      return {lab,ncd};
+    }catch(e){
+      el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
+      throw e;
+    }
+  }
   // แสดงผลจากข้อมูล lab ที่วิเคราะห์และบันทึกไว้แล้ว (ไม่ต้องโหลด/อ่านไฟล์ซ้ำ)
   // ใช้เมื่อเปิดดูผลตรวจซ้ำ เพื่อให้ข้อมูลตรงกับที่แดชบอร์ดและ PDF ใช้เสมอ
   function renderFromData(containerId,lab,gender,ncd){
@@ -932,7 +953,7 @@
     if(!ncd) ncd=analyzeNCD(lab,gender,lab&&lab.age);
     el.innerHTML=buildHTML(lab,gender,ncd);
   }
-  global.LabModule={renderInto,renderFromFile,renderFromData,analyzeNCD,extractLab,pdfToText,imageToText,sourceToText};
+  global.LabModule={renderInto,renderFromFile,renderFromData,renderFromSources,analyzeNCD,extractLab,pdfToText,imageToText,sourceToText};
 })(window);
 // ======= NCD DASHBOARD (Admin) =======
 window.renderAdminNcdDashboard = async function(records) {
@@ -1957,27 +1978,33 @@ function toggleAttended(id){
   renderAdmin();
 }
 // ======= PDF MODAL =======
-let currentPdfModalId=null, pendingPdfBase64=null, pendingPdfName=null, pendingPdfType=null, pendingPdfOriginal=null;
+let currentPdfModalId=null, pendingImages=[], pendingPdfBase64=null, pendingPdfName=null, pendingPdfType=null;
 function openPdfModal(id){
   currentPdfModalId=id;
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingPdfOriginal=null;
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[];
   const r=records.find(function(x){return x.id===id;});
   if(!r)return;
   document.getElementById('pdf-person-name').textContent=r.prefix+' '+r.fname+' '+r.lname;
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
   document.getElementById('pdf-preview-thumb').classList.add('hidden');
+  document.getElementById('pdf-preview-images').classList.add('hidden');
+  document.getElementById('pdf-preview-images').innerHTML='';
   document.getElementById('pdf-err').classList.add('hidden');
   document.getElementById('pdf-lab-preview').classList.add('hidden');
   document.getElementById('pdf-lab-preview-content').innerHTML='';
   document.getElementById('pdf-file-input').value='';
   document.getElementById('pdf-camera-input').value='';
-  const undoBtn=document.getElementById('pdf-undo-crop');
-  if(undoBtn) undoBtn.classList.add('hidden');
-  if(r.pdfData){
+  const hasImages = r.images && r.images.length;
+  if(hasImages || r.pdfData){
     document.getElementById('pdf-current-wrap').classList.remove('hidden');
-    document.getElementById('pdf-current-name').textContent=r.pdfName||'ไฟล์ผลตรวจ';
+    if(hasImages){
+      document.getElementById('pdf-current-name').textContent=r.images.length+' รูปภาพผลตรวจ';
+      document.getElementById('pdf-current-icon').textContent='🖼️';
+    } else {
+      document.getElementById('pdf-current-name').textContent=r.pdfName||'ไฟล์ผลตรวจ';
+      document.getElementById('pdf-current-icon').textContent = r.resultFileType==='image' ? '🖼️' : '📄';
+    }
     document.getElementById('pdf-current-date').textContent=r.pdfDate||'';
-    document.getElementById('pdf-current-icon').textContent = r.resultFileType==='image' ? '🖼️' : '📄';
   } else {
     document.getElementById('pdf-current-wrap').classList.add('hidden');
   }
@@ -1985,16 +2012,62 @@ function openPdfModal(id){
 }
 function closePdfModal(){ document.getElementById('modal-pdf').classList.add('hidden'); }
 function clearPdfPreview(){
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingPdfOriginal=null;
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[];
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
   document.getElementById('pdf-preview-thumb').classList.add('hidden');
+  document.getElementById('pdf-preview-images').classList.add('hidden');
+  document.getElementById('pdf-preview-images').innerHTML='';
   document.getElementById('pdf-lab-preview').classList.add('hidden');
   document.getElementById('pdf-lab-preview-content').innerHTML='';
-  const undoBtn=document.getElementById('pdf-undo-crop');
-  if(undoBtn) undoBtn.classList.add('hidden');
 }
-function handlePdfSelect(evt){ processPdfFile(evt.target.files[0]); }
-function handlePdfDrop(evt){ evt.preventDefault(); if(evt.dataTransfer.files[0]) processPdfFile(evt.dataTransfer.files[0]); }
+// แสดงตัวอย่างไฟล์/รูปที่เลือกไว้ทั้งหมด (รองรับหลายรูป เช่น ผลตรวจ 1-2 หน้า)
+function renderPendingPreview(){
+  const pdfWrap=document.getElementById('pdf-preview-wrap');
+  const imgWrap=document.getElementById('pdf-preview-images');
+  if(pendingPdfType==='pdf' && pendingPdfBase64){
+    imgWrap.classList.add('hidden'); imgWrap.innerHTML='';
+    pdfWrap.classList.remove('hidden');
+    document.getElementById('pdf-preview-name').textContent=pendingPdfName;
+    const approxKB=Math.round((pendingPdfBase64.length*0.75)/1024);
+    document.getElementById('pdf-preview-size').textContent=approxKB+' KB';
+    document.getElementById('pdf-preview-thumb').classList.add('hidden');
+    document.getElementById('pdf-preview-icon').classList.remove('hidden');
+    document.getElementById('pdf-preview-icon').textContent='📄';
+  } else if(pendingPdfType==='image' && pendingImages.length){
+    pdfWrap.classList.add('hidden');
+    imgWrap.classList.remove('hidden');
+    imgWrap.innerHTML = '<div style="font-size:12px;color:#92600b;font-weight:600;width:100%;">แนบแล้ว '+pendingImages.length+' รูป — กดปุ่ม "แนบไฟล์" หรือ "ถ่ายภาพ" ด้านบนอีกครั้งเพื่อเพิ่มหน้าถัดไป</div>'
+      + pendingImages.map(function(im,idx){
+          return '<div style="position:relative;width:64px;height:64px;">'
+            +'<img src="'+im.dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1.5px solid #f0d896;">'
+            +'<span style="position:absolute;bottom:-4px;left:-4px;background:#b7202b;color:white;font-size:10px;font-weight:700;border-radius:8px;padding:0 5px;">'+(idx+1)+'</span>'
+            +'<button onclick="removePendingImage('+idx+')" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;">✕</button>'
+            +'</div>';
+        }).join('');
+  } else {
+    pdfWrap.classList.add('hidden');
+    imgWrap.classList.add('hidden'); imgWrap.innerHTML='';
+  }
+}
+function removePendingImage(idx){
+  pendingImages.splice(idx,1);
+  renderPendingPreview();
+  previewLabCombined();
+}
+function handlePdfSelect(evt){ processPdfFiles(Array.from(evt.target.files||[])); }
+function handlePdfDrop(evt){ evt.preventDefault(); processPdfFiles(Array.from((evt.dataTransfer&&evt.dataTransfer.files)||[])); }
+async function processPdfFiles(files){
+  if(!files.length) return;
+  if(files.length>1){
+    const allImages = files.every(function(f){ return f.type.startsWith('image/'); });
+    if(!allImages){
+      document.getElementById('pdf-err').textContent='เลือกได้หลายไฟล์เฉพาะกรณีเป็นรูปภาพทั้งหมด ถ้าเป็นไฟล์ PDF กรุณาเลือกทีละไฟล์';
+      document.getElementById('pdf-err').classList.remove('hidden');
+      return;
+    }
+  }
+  for(const f of files){ await processPdfFile(f); }
+}
 // ย่อขนาดรูปภาพ (เช่น รูปถ่ายจากกล้องมือถือที่มักมีขนาดใหญ่มาก 3000-4000px)
 // ให้เหลือด้านยาวสุดไม่เกิน maxDim px ก่อนอัพโหลด/OCR — ช่วยให้ "อัพโหลด" และ "วิเคราะห์ผล" เร็วขึ้นมาก
 // โดยยังคมชัดพอสำหรับอ่านตัวเลขผลตรวจ
