@@ -1224,10 +1224,27 @@ async function fetchAllAdminProfiles(){
   return (data||[]).map(function(p){ return {id:p.id, name:p.name, username:p.username, isDefault:p.is_default}; });
 }
 // เรียกตอนโหลดหน้าเว็บครั้งแรก — ถ้ามี session แอดมินค้างอยู่ (เช่น รีเฟรชหน้า) จะโหลดข้อมูลกลับมาให้อัตโนมัติ
+// ป้องกันหน้าเว็บค้าง "กำลังโหลด..." ตลอดไป กรณีเบราว์เซอร์บล็อกการเข้าถึง localStorage
+// (เช่น ฟีเจอร์ Tracking Prevention ของ Edge) ทำให้ตรวจสอบ session ค้างไม่ตอบสนอง —
+// ถ้าเกิน 5 วินาทีจะถือว่า "ไม่มี session ค้างอยู่" แล้วให้ผู้ใช้ล็อกอินเองตามปกติ
+function withTimeout(promise, ms, fallbackValue){
+  return Promise.race([
+    promise,
+    new Promise(function(resolve){ setTimeout(function(){ resolve(fallbackValue); }, ms); })
+  ]);
+}
 window.loadFromSupabase = async function(){
   showLoadingOverlay('กำลังโหลดข้อมูล...');
   try {
-    const { data:{ session } } = await window._sb.auth.getSession();
+    const sessionResult = await withTimeout(
+      window._sb.auth.getSession(),
+      5000,
+      { data: { session: null }, _timedOut: true }
+    );
+    if(sessionResult._timedOut){
+      console.warn('Session check timed out after 5s — treating as no active session. (This can happen if the browser blocks localStorage access for third-party scripts, e.g. Edge Tracking Prevention.)');
+    }
+    const session = sessionResult.data.session;
     if(session){
       const { data: profile } = await window._sb.from('admin_profiles').select('*').eq('id', session.user.id).single();
       if(profile){
@@ -1245,7 +1262,8 @@ window.loadFromSupabase = async function(){
   } catch(e){
     hideLoadingOverlay();
     console.error('Supabase load error:', e);
-    alert('❌ ไม่สามารถเชื่อมต่อ Supabase ได้\n' + e.message);
+    _firebaseReady = true;
+    // ไม่ต้อง alert แล้วบล็อกผู้ใช้ — ปล่อยให้ใช้งานหน้าเว็บต่อได้ตามปกติ (ล็อกอินเองได้ถ้าจำเป็น)
   }
 };
 async function saveAll(){}
