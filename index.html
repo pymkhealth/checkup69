@@ -10,43 +10,44 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Tabler Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getStorage, ref as storageRef, uploadString, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-  const firebaseConfig = {
-    apiKey: "AIzaSyAh_U2SfI-8mj5voLR17ZqYr3-EkywAHng",
-    authDomain: "pymk-health.firebaseapp.com",
-    projectId: "pymk-health",
-    storageBucket: "pymk-health.firebasestorage.app",
-    messagingSenderId: "314295525314",
-    appId: "1:314295525314:web:21b4e8fdc763792bd9405b",
-    measurementId: "G-5VW0RZ4PYK"
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ══════════════════════════════════════════════════════════════════════
+  //  ตั้งค่า Supabase — ใส่ค่าโปรเจกต์ของคุณเองที่นี่
+  //  (Supabase Dashboard → Project Settings → API)
+  // ══════════════════════════════════════════════════════════════════════
+  const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+  // ชื่อ Storage bucket ที่ใช้เก็บไฟล์ผลตรวจ (ต้องตรงกับที่สร้างไว้ใน supabase-schema.sql)
+  const RESULT_BUCKET = "result-files";
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  window._sb = sb;
+
+  // ── ชั้นเชื่อมต่อไฟล์ (Storage) — คงชื่อฟังก์ชันเดิมไว้เหมือน Firebase Storage SDK
+  // เพื่อให้โค้ดส่วนแนบไฟล์/ลบไฟล์ที่เหลือของแอปไม่ต้องแก้ไข ══════
+  window._storage = true; // ไม่ได้ใช้จริง เก็บไว้เพื่อ compat กับโค้ดเดิมที่ส่ง argument นี้มา
+  window._storageRef = function(_storage, path){ return path; }; // แค่ส่ง path string กลับไปใช้ต่อ
+  window._uploadBytes = function(path, blob){
+    return sb.storage.from(RESULT_BUCKET).upload(path, blob, { upsert:true, contentType: blob.type||'application/octet-stream' });
   };
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app, 'pymkhealth');
-  window._db = db;
-  window._col = collection;
-  window._doc = doc;
-  window._setDoc = setDoc;
-  const storage = getStorage(app);
-  window._storage = storage;
-  window._storageRef = storageRef;
-  window._uploadString = uploadString;
-  window._uploadBytes = uploadBytes;
-  window._getDownloadURL = getDownloadURL;
-  window._deleteObject = deleteObject;
-  window._getDocs = getDocs;
-  window._updateDoc = updateDoc;
-  window._deleteDoc = deleteDoc;
-  window._query = query;
-  window._where = where;
-  window._onSnapshot = onSnapshot;
-  window._firebaseModuleReady = true;
+  window._getDownloadURL = async function(path){
+    const { data } = sb.storage.from(RESULT_BUCKET).getPublicUrl(path);
+    return data.publicUrl;
+  };
+  window._deleteObject = function(path){
+    return sb.storage.from(RESULT_BUCKET).remove([path]);
+  };
+
+  // ── แปลง username ↔ email ภายใน (Supabase Auth ต้องใช้อีเมล แต่หน้าจอแอดมินยังกรอกแค่ username) ──
+  const ADMIN_EMAIL_DOMAIN = "pymk-health.local";
+  window._usernameToEmail = function(u){ return u.includes('@') ? u : (u+'@'+ADMIN_EMAIL_DOMAIN); };
+
+  // ── รอให้หน้าเว็บโหลดเสร็จ แล้วเริ่มต้นระบบ (ตรวจสอบ session แอดมินที่ค้างอยู่ ถ้ามี) ──
   function tryLoad() {
-    if (typeof window.loadFromFirebase === 'function') {
-      window.loadFromFirebase();
+    if (typeof window.loadFromSupabase === 'function') {
+      window.loadFromSupabase();
     } else {
       setTimeout(tryLoad, 50);
     }
@@ -177,7 +178,7 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;">
       <button onclick="showPage('home')" class="bs" style="padding:7px 14px;font-size:13px;">🏠 หน้าหลัก</button>
-      <button onclick="showAdminLogin()" class="bs" style="padding:7px 14px;font-size:13px;">⚙️ Admin</button>
+      <button onclick="currentAdmin?showPage('admin'):showAdminLogin()" class="bs" style="padding:7px 14px;font-size:13px;">⚙️ Admin</button>
     </div>
   </div>
 </div>
@@ -390,7 +391,7 @@
       <p style="font-size:12px;color:#9ca3af;margin-top:5px;">รหัสผ่านคือวันเดือนปีเกิด (พ.ศ.) ของท่าน</p>
     </div>
     <div id="login-error" class="hidden" style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;"></div>
-    <button class="bp" style="width:100%;" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <button id="login-submit-btn" class="bp" style="width:100%;" onclick="doLogin()">เข้าสู่ระบบ</button>
     <div style="text-align:center;margin-top:14px;">
       <button onclick="showPage('home')" style="background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;">← กลับหน้าหลัก</button>
     </div>
@@ -451,6 +452,7 @@
       <button class="bs" style="font-size:13px;padding:7px 14px;" onclick="showPage('home')">← กลับ</button>
       <button onclick="showPage('manage-admins')" style="background:#7c3aed;color:white;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">👥 จัดการแอดมิน</button>
       <button class="bg" style="font-size:13px;padding:7px 14px;" onclick="exportAllExcel()">⬇ Export Excel (รง.ผสต.11)</button>
+      <button onclick="adminLogout()" style="background:#fee2e2;color:#dc2626;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">🚪 ออกจากระบบ</button>
     </div>
   </div>
   <!-- NCD Dashboard (ใหม่) -->
@@ -541,7 +543,6 @@
       <button onclick="clearPdfPreview()" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;">✕</button>
     </div>
     <div id="pdf-preview-images" class="hidden" style="margin-top:8px;padding:10px 14px;background:#fdf3e0;border:1px solid #f0d896;border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"></div>
-    <button id="pdf-undo-crop" onclick="useOriginalUncropped()" class="hidden" style="margin-top:6px;width:100%;background:none;border:1px dashed #d1d5db;color:#6b7280;border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;">ระบบครอบตัดกรอบเอกสารให้อัตโนมัติ — ถ้าตัดผิด/ตกส่วนสำคัญ กดที่นี่เพื่อใช้ภาพเต็มแทน</button>
     <!-- Preview Lab -->
     <div id="pdf-lab-preview" class="hidden" style="margin-top:16px;border-top:2px solid #fdf3e0;padding-top:14px;">
       <div style="font-size:13px;font-weight:700;color:#7f1621;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
@@ -969,7 +970,7 @@ window.renderAdminNcdDashboard = async function(records) {
     smoke: 0,
   };
   records.forEach(r => {
-    if (r.pdfData) stats.hasPdf++;
+    if (r.pdfData || (r.images && r.images.length)) stats.hasPdf++;
     const bmi = parseFloat(r.bmi || 0);
     if (bmi > 25) stats.bmiOver++;
     const alc = parseInt(r.alcohol || 0);
@@ -1205,57 +1206,69 @@ function hideLoadingOverlay(){
   const el = document.getElementById('fb-loading-overlay');
   if(el) el.style.display = 'none';
 }
-window.loadFromFirebase = async function(){
+// โหลดข้อมูลทุกรายการ (เฉพาะแอดมินที่ล็อกอินเท่านั้น — ผู้เข้ารับบริการทั่วไปจะไม่ถูกโหลดข้อมูลทั้งหมด
+// มาไว้ในเครื่อง เพราะถูกกันไว้ด้วย Row Level Security ต้องค้นหาผ่าน RPC เฉพาะรายคนเท่านั้น)
+async function loadAllRecordsForAdmin(){
+  const { data, error } = await window._sb.from('hc_records').select('id,data').order('id',{ascending:false});
+  if(error){
+    console.error('Load records error:', error);
+    alert('❌ ไม่สามารถโหลดข้อมูลได้: ' + error.message);
+    records=[];
+    return;
+  }
+  records = (data||[]).map(function(row){ return row.data; });
+}
+async function fetchAllAdminProfiles(){
+  const { data, error } = await window._sb.from('admin_profiles').select('*').order('created_at',{ascending:true});
+  if(error){ console.error('Load admin_profiles error:', error); return []; }
+  return (data||[]).map(function(p){ return {id:p.id, name:p.name, username:p.username, isDefault:p.is_default}; });
+}
+// เรียกตอนโหลดหน้าเว็บครั้งแรก — ถ้ามี session แอดมินค้างอยู่ (เช่น รีเฟรชหน้า) จะโหลดข้อมูลกลับมาให้อัตโนมัติ
+window.loadFromSupabase = async function(){
   showLoadingOverlay('กำลังโหลดข้อมูล...');
   try {
-    const recSnap = await window._getDocs(window._col(window._db, 'hc_records'));
-    records = [];
-    recSnap.forEach(function(d){ records.push(d.data()); });
-    const admSnap = await window._getDocs(window._col(window._db, 'hc_admins'));
-    admins = [];
-    admSnap.forEach(function(d){ admins.push(d.data()); });
-    if(!admins.length){
-      admins = [{name:'Nurse Admin',username:'nurse',password:'nurse1',isDefault:true}];
-      await saveAdmins();
+    const { data:{ session } } = await window._sb.auth.getSession();
+    if(session){
+      const { data: profile } = await window._sb.from('admin_profiles').select('*').eq('id', session.user.id).single();
+      if(profile){
+        currentAdmin = {id:profile.id, name:profile.name, username:profile.username, isDefault:profile.is_default};
+        await loadAllRecordsForAdmin();
+        admins = await fetchAllAdminProfiles();
+      } else {
+        // session มีอยู่แต่ไม่ใช่บัญชีแอดมิน (ไม่มีสิทธิ์) — ออกจากระบบทิ้ง
+        await window._sb.auth.signOut();
+      }
     }
-    window.__allRecords = records;
     _firebaseReady = true;
     hideLoadingOverlay();
     if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
   } catch(e){
     hideLoadingOverlay();
-    console.error('Firebase load error:', e);
-    alert('❌ ไม่สามารถเชื่อมต่อ Firebase ได้\n' + e.message);
+    console.error('Supabase load error:', e);
+    alert('❌ ไม่สามารถเชื่อมต่อ Supabase ได้\n' + e.message);
   }
 };
 async function saveAll(){}
-async function saveRecordToFirebase(rec){
+// บันทึก/อัปเดตข้อมูลผู้เข้ารับบริการ 1 รายการ — เก็บทั้งก้อนเป็น JSON ในคอลัมน์ data (upsert)
+// ใช้ตอนผู้เข้ารับบริการลงทะเบียนใหม่ (ยังไม่ได้ล็อกอิน) — insert อย่างเดียว ตรงกับสิทธิ์ที่ RLS อนุญาตให้ anon
+async function saveRecordToSupabase(rec){
   try {
-    await window._setDoc(window._doc(window._db, 'hc_records', rec.id), rec);
+    const { error } = await window._sb.from('hc_records').insert({ id: rec.id, data: rec, updated_at: new Date().toISOString() });
+    if(error) throw error;
   } catch(e){
     console.error('Save record error:', e);
     alert('❌ บันทึกข้อมูลไม่สำเร็จ: ' + e.message);
   }
 }
-async function updateRecordInFirebase(rec){
+// ใช้ตอนแอดมิน (ล็อกอินแล้ว) แก้ไข/อัปเดตข้อมูลเดิม — upsert ได้ เพราะมีสิทธิ์เต็มตาม RLS
+async function updateRecordInSupabase(rec){
   try {
-    await window._setDoc(window._doc(window._db, 'hc_records', rec.id), rec);
+    const { error } = await window._sb.from('hc_records').upsert({ id: rec.id, data: rec, updated_at: new Date().toISOString() });
+    if(error) throw error;
   } catch(e){
     console.error('Update record error:', e);
     alert('❌ บันทึกข้อมูลไม่สำเร็จ: ' + e.message);
   }
-}
-async function saveAdmins(){
-  try {
-    for(const a of admins){
-      await window._setDoc(window._doc(window._db, 'hc_admins', a.username), a);
-    }
-  } catch(e){ console.error('Save admins error:', e); }
-}
-async function deleteAdminFromFirebase(username){
-  try {
-    await window._deleteDoc(window._doc(window._db, 'hc_admins', username));
-  } catch(e){ console.error('Delete admin error:', e); }
 }
 // ======= ลบรายการที่ลงทะเบียนซ้ำ =======
 async function deleteRecord(id){
@@ -1265,16 +1278,20 @@ async function deleteRecord(id){
   if(!confirm('ยืนยันลบข้อมูลของ "'+fullName.trim()+'" ?\nการลบนี้ไม่สามารถกู้คืนได้ (ใช้สำหรับกรณีลงทะเบียนซ้ำ)')) return;
   try{
     showLoadingOverlay('กำลังลบข้อมูล...');
-    // ลบไฟล์ผลตรวจที่แนบไว้ใน Storage ด้วย (ถ้ามี) เพื่อไม่ให้เป็นไฟล์ค้าง
-    if(r.pdfPath){
-      try{
-        const fileRef=window._storageRef(window._storage, r.pdfPath);
-        await window._deleteObject(fileRef);
-      }catch(e){ console.warn('ลบไฟล์แนบไม่สำเร็จ (อาจถูกลบไปแล้ว):', e); }
+    // ลบไฟล์ผลตรวจที่แนบไว้ใน Storage ด้วย (ถ้ามี) เพื่อไม่ให้เป็นไฟล์ค้าง — รองรับทั้งหลายรูปภาพและไฟล์ PDF เดี่ยว
+    const deletions=[];
+    if(r.images && r.images.length){
+      r.images.forEach(function(im){
+        if(im.path) deletions.push(window._deleteObject(window._storageRef(window._storage, im.path)).catch(function(){}));
+      });
     }
-    await window._deleteDoc(window._doc(window._db, 'hc_records', id));
+    if(r.pdfPath){
+      deletions.push(window._deleteObject(window._storageRef(window._storage, r.pdfPath)).catch(function(){}));
+    }
+    await Promise.all(deletions);
+    const { error } = await window._sb.from('hc_records').delete().eq('id', id);
+    if(error) throw error;
     records = records.filter(function(x){return x.id!==id;});
-    window.__allRecords = records;
     hideLoadingOverlay();
     renderAdmin();
     renderAdminNcdDashboard(records);
@@ -1344,18 +1361,48 @@ function showAdminLogin(){
   setTimeout(function(){ document.getElementById('admin-login-user').focus(); },100);
 }
 function closeAdminLogin(){ document.getElementById('modal-admin-login').classList.add('hidden'); }
-function doAdminLogin(){
+async function doAdminLogin(){
   const u = document.getElementById('admin-login-user').value.trim();
   const p = document.getElementById('admin-login-pass').value;
-  const found = admins.find(function(a){ return a.username===u && a.password===p; });
-  if(found){
-    currentAdmin = found;
+  const errEl = document.getElementById('admin-login-error');
+  errEl.classList.add('hidden');
+  if(!u || !p){ errEl.textContent='กรุณากรอก Username และ Password'; errEl.classList.remove('hidden'); return; }
+  showLoadingOverlay('กำลังเข้าสู่ระบบ...');
+  try{
+    const email = window._usernameToEmail(u);
+    const { data, error } = await window._sb.auth.signInWithPassword({ email:email, password:p });
+    if(error || !data.session){
+      hideLoadingOverlay();
+      errEl.textContent = 'Username หรือ Password ไม่ถูกต้อง';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const { data: profile, error: profErr } = await window._sb.from('admin_profiles').select('*').eq('id', data.user.id).single();
+    if(profErr || !profile){
+      await window._sb.auth.signOut();
+      hideLoadingOverlay();
+      errEl.textContent = 'บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานระบบแอดมิน';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    currentAdmin = {id:profile.id, name:profile.name, username:profile.username, isDefault:profile.is_default};
+    await loadAllRecordsForAdmin();
+    admins = await fetchAllAdminProfiles();
+    hideLoadingOverlay();
     closeAdminLogin();
     showPage('admin');
-  } else {
-    document.getElementById('admin-login-error').textContent = 'Username หรือ Password ไม่ถูกต้อง';
-    document.getElementById('admin-login-error').classList.remove('hidden');
+  }catch(e){
+    hideLoadingOverlay();
+    console.error('Login error:', e);
+    errEl.textContent = 'เข้าสู่ระบบไม่สำเร็จ: '+e.message;
+    errEl.classList.remove('hidden');
   }
+}
+async function adminLogout(){
+  if(!confirm('ยืนยันออกจากระบบ?')) return;
+  try{ await window._sb.auth.signOut(); }catch(e){ console.error('Logout error:', e); }
+  currentAdmin=null; records=[]; admins=[];
+  showPage('home');
 }
 // ======= MANAGE ADMINS =======
 function renderAdminList(){
@@ -1371,29 +1418,58 @@ function renderAdminList(){
       +'</td></tr>';
   }).join('');
 }
-function addAdmin(){
+// หมายเหตุสำคัญ: Supabase Auth (client-side, ใช้ anon key) ไม่มีทาง "สร้างผู้ใช้ใหม่โดยไม่สลับ session"
+// การเรียก signUp() จะทำให้เบราว์เซอร์เปลี่ยนไปเป็น session ของผู้ใช้ใหม่ทันที (เป็นข้อจำกัดของ Supabase เอง
+// ไม่ใช่บั๊ก) — ดังนั้นหลังเพิ่มแอดมินสำเร็จ ระบบจะออกจากระบบและให้เข้าสู่ระบบใหม่อีกครั้ง
+async function addAdmin(){
   const name = document.getElementById('new-admin-name').value.trim();
   const user = document.getElementById('new-admin-user').value.trim();
   const pass = document.getElementById('new-admin-pass').value;
   const errEl = document.getElementById('add-admin-error');
   if(!name||!user||!pass){ errEl.textContent='กรุณากรอกข้อมูลให้ครบ'; errEl.classList.remove('hidden'); return; }
+  if(pass.length<6){ errEl.textContent='รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.classList.remove('hidden'); return; }
   if(admins.find(function(a){ return a.username===user; })){ errEl.textContent='Username นี้มีอยู่แล้ว'; errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
-  const newAdmin = {name:name, username:user, password:pass, isDefault:false};
-  admins.push(newAdmin);
-  saveAdmins();
-  document.getElementById('new-admin-name').value='';
-  document.getElementById('new-admin-user').value='';
-  document.getElementById('new-admin-pass').value='';
-  renderAdminList();
+  const myUsername = currentAdmin.username;
+  try{
+    showLoadingOverlay('กำลังสร้างบัญชีแอดมินใหม่...');
+    const email = window._usernameToEmail(user);
+    const { data, error } = await window._sb.auth.signUp({ email:email, password:pass });
+    if(error){ hideLoadingOverlay(); errEl.textContent='สร้างบัญชีไม่สำเร็จ: '+error.message; errEl.classList.remove('hidden'); return; }
+    const newUserId = data.user ? data.user.id : (data.session ? data.session.user.id : null);
+    if(!newUserId){ hideLoadingOverlay(); errEl.textContent='สร้างบัญชีไม่สำเร็จ: ไม่พบรหัสผู้ใช้ใหม่'; errEl.classList.remove('hidden'); return; }
+    const { error: profErr } = await window._sb.from('admin_profiles').insert({ id:newUserId, name:name, username:user, is_default:false });
+    hideLoadingOverlay();
+    if(profErr){ errEl.textContent='บันทึกโปรไฟล์ไม่สำเร็จ: '+profErr.message; errEl.classList.remove('hidden'); return; }
+    document.getElementById('new-admin-name').value='';
+    document.getElementById('new-admin-user').value='';
+    document.getElementById('new-admin-pass').value='';
+    alert('✅ เพิ่มแอดมิน "'+name+'" สำเร็จ\n\nหมายเหตุ: Supabase จะสลับ session ของเบราว์เซอร์นี้ไปเป็นบัญชีใหม่โดยอัตโนมัติ ระบบจะออกจากระบบให้ กรุณาเข้าสู่ระบบใหม่ในฐานะ "'+myUsername+'" อีกครั้ง');
+    await window._sb.auth.signOut();
+    currentAdmin=null; records=[]; admins=[];
+    showPage('home');
+    showAdminLogin();
+  }catch(e){
+    hideLoadingOverlay();
+    console.error('Add admin error:', e);
+    errEl.textContent='เกิดข้อผิดพลาด: '+e.message; errEl.classList.remove('hidden');
+  }
 }
-function deleteAdmin(i){
-  if(!confirm('ยืนยันการลบแอดมิน "'+admins[i].name+'" ?')) return;
-  const username = admins[i].username;
-  admins.splice(i,1);
-  deleteAdminFromFirebase(username);
-  saveAdmins();
-  renderAdminList();
+// ลบ = เพิกถอนสิทธิ์แอดมิน (ลบแถวใน admin_profiles) ทันที ตัวบัญชีเข้าสู่ระบบ (Supabase Auth) ยังอยู่
+// แต่จะเข้าใช้งานหน้าแอดมินไม่ได้อีก เพราะ RLS ทุกตารางอ้างอิงการเป็นสมาชิกใน admin_profiles
+// (การลบบัญชี Auth ทิ้งจริงๆ ต้องทำผ่าน Supabase Dashboard หรือ service role เท่านั้น ไม่สามารถทำจากฝั่งเว็บได้)
+async function deleteAdmin(i){
+  const target = admins[i];
+  if(!confirm('ยืนยันการลบแอดมิน "'+target.name+'" ?\n(จะถูกเพิกถอนสิทธิ์เข้าใช้งานระบบทันที)')) return;
+  try{
+    const { error } = await window._sb.from('admin_profiles').delete().eq('id', target.id);
+    if(error) throw error;
+    admins.splice(i,1);
+    renderAdminList();
+  }catch(e){
+    console.error('Delete admin error:', e);
+    alert('❌ ลบแอดมินไม่สำเร็จ: '+e.message);
+  }
 }
 // ======= PDPA CONSENT =======
 let pdpaAccepted = { register:false, login:false };
@@ -1598,7 +1674,7 @@ function submitForm(){
     q9, q8, colorGroup
   };
   records.push(rec);
-  saveRecordToFirebase(rec);
+  saveRecordToSupabase(rec);
   lastId=rec.id;
   showPage('success');
 }
@@ -1607,21 +1683,36 @@ function viewOwnResult(){
   if(r){currentRecord=r;renderResult(r);showPage('result');}
 }
 // ======= LOGIN =======
-function doLogin(){
+async function doLogin(){
   const id=document.getElementById('login-id').value.trim();
   const dobVal=getDOBValue('login-dob-day','login-dob-month','login-dob-year');
   const errEl=document.getElementById('login-error');
   if(!pdpaAccepted.login){errEl.textContent='กรุณากดยินยอม/รับทราบประกาศคุ้มครองข้อมูลส่วนบุคคล (PDPA) ก่อนเข้าสู่ระบบ';errEl.classList.remove('hidden');return;}
   if(!dobVal){errEl.textContent='กรุณาเลือกวันเกิดให้ครบ';errEl.classList.remove('hidden');return;}
-  const found=records.filter(function(x){return x.idcard===id&&x.dob===dobVal;});
-  if(found.length){
-    errEl.classList.add('hidden');
-    currentRecord=found[found.length-1];
-    renderResult(currentRecord);
-    showPage('result');
-  } else {
-    errEl.textContent='ไม่พบข้อมูล หรือเลขบัตร/วันเกิดไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+  errEl.classList.add('hidden');
+  const btn=document.getElementById('login-submit-btn');
+  const origLabel=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='⏳ กำลังตรวจสอบ...';}
+  try{
+    // ค้นหาผ่านฟังก์ชัน RPC (get_own_record) แทนการอ่านทั้งตาราง — ตรงกับหลัก Row Level Security
+    // ที่ตั้งไว้ใน Supabase: ผู้เข้ารับบริการจะเห็นได้เฉพาะข้อมูลของตัวเอง (ยืนยันด้วยเลขบัตร+วันเกิด) เท่านั้น
+    const { data, error } = await window._sb.rpc('get_own_record', { p_idcard: id, p_dob: dobVal });
+    if(error) throw error;
+    const found = data || [];
+    if(found.length){
+      currentRecord = found[found.length-1];
+      renderResult(currentRecord);
+      showPage('result');
+    } else {
+      errEl.textContent='ไม่พบข้อมูล หรือเลขบัตร/วันเกิดไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+      errEl.classList.remove('hidden');
+    }
+  }catch(e){
+    console.error('Login lookup error:', e);
+    errEl.textContent='เกิดข้อผิดพลาดในการค้นหาข้อมูล: '+e.message;
     errEl.classList.remove('hidden');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=origLabel;}
   }
 }
 // ======= RENDER RESULT =======
@@ -1745,7 +1836,17 @@ function renderResult(r){
   // ════ ไฟล์ผลตรวจแนบ — แสดงให้ทุกคนเห็น (ผู้เข้ารับบริการดูได้เช่นเดียวกับแอดมิน) ════
   const attSection = document.getElementById('attached-file-section');
   const attContent = document.getElementById('attached-file-content');
-  if(r.pdfData){
+  const hasImages = r.images && r.images.length;
+  if(hasImages){
+    attSection.classList.remove('hidden');
+    attContent.innerHTML =
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">'
+      + r.images.map(function(im,idx){
+          return '<img src="'+im.data+'" alt="ไฟล์ผลตรวจแนบ หน้า '+(idx+1)+'" style="max-width:100%;max-height:520px;border-radius:8px;border:1px solid #e5e7eb;cursor:zoom-in;" onclick="viewCurrentResultFile()">';
+        }).join('')
+      +'</div>'
+      +'<p style="font-size:12px;color:#9ca3af;margin:8px 0 0;text-align:center;">คลิกที่ภาพเพื่อดูขนาดเต็ม'+(r.images.length>1?' • ทั้งหมด '+r.images.length+' รูป':'')+'</p>';
+  } else if(r.pdfData){
     attSection.classList.remove('hidden');
     if(r.resultFileType==='image'){
       attContent.innerHTML =
@@ -1771,8 +1872,12 @@ function renderResult(r){
     labSection.classList.remove('hidden');
     window.LabModule.renderFromData('lab-result-container', r.lab, gender, r.ncdAnalysis);
     window._labRenderPromise = null;
-  } else if(r.pdfData && window.LabModule){
+  } else if(hasImages && window.LabModule){
     // กรณีเก่าที่ยังไม่มีผลวิเคราะห์บันทึกไว้ (หรือกำลังวิเคราะห์อยู่เบื้องหลัง) — อ่านไฟล์แบบสดๆ ไปก่อน
+    labSection.classList.remove('hidden');
+    labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
+    window._labRenderPromise = window.LabModule.renderFromSources('lab-result-container', r.images.map(function(im){return im.data;}), gender, 'image');
+  } else if(r.pdfData && window.LabModule){
     labSection.classList.remove('hidden');
     labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
     // เก็บ Promise ไว้ให้ downloadResultPDF() รอจนวิเคราะห์เสร็จก่อนจับภาพ PDF
@@ -1879,7 +1984,7 @@ function renderAdmin(){
     const q9=parseInt(r.q9),q8=parseInt(r.q8);
     const q9tag=q9<=6?'tn':q9<=12?'tw':'ta';
     const q8tag=q8===0?'tn':q8<=8?'tw':'ta';
-    const hasPdf=r.pdfData;
+    const hasPdf=r.pdfData||(r.images&&r.images.length);
     const pdfBadge=hasPdf
       ?'<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:'+(r._uploading?'#fef9c3':'#dcfce7')+';color:'+(r._uploading?'#92400e':'#166534')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="ดูไฟล์ + วิเคราะห์ Lab">'+(r._uploading?'⏳ กำลังอัพโหลด':'🔬 Lab')+'</button>'
         +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>'
@@ -1915,7 +2020,7 @@ function renderAdmin(){
 }
 function viewAdminPdf(id){
   const r=records.find(function(x){return x.id===id;});
-  if(!r||!r.pdfData)return;
+  if(!r||(!r.pdfData&&!(r.images&&r.images.length)))return;
   currentRecord=r;
   renderResult(r);
   showPage('result');
@@ -1966,7 +2071,7 @@ function saveAppt(){
   } else {
     r.appointment={type:'none'};
   }
-  updateRecordInFirebase(r);
+  updateRecordInSupabase(r);
   closeAppt();
   renderAdmin();
 }
@@ -1974,7 +2079,7 @@ function toggleAttended(id){
   const r=records.find(function(x){return x.id===id;});
   if(!r||!r.appointment||r.appointment.type!=='appt')return;
   r.appointment.attended=!r.appointment.attended;
-  updateRecordInFirebase(r);
+  updateRecordInSupabase(r);
   renderAdmin();
 }
 // ======= PDF MODAL =======
@@ -2176,18 +2281,7 @@ function autoCropDocument(dataUrl){
     img.src=dataUrl;
   });
 }
-async function useOriginalUncropped(){
-  if(!pendingPdfOriginal) return;
-  document.getElementById('pdf-preview-size').textContent='กำลังย่อขนาดรูป...';
-  const dataUrl=await resizeImageDataUrl(pendingPdfOriginal, 1600, 0.85);
-  pendingPdfBase64=dataUrl;
-  const approxKB=Math.round((dataUrl.length*0.75)/1024);
-  document.getElementById('pdf-preview-size').textContent=approxKB+' KB (ใช้ภาพเต็ม ไม่ครอบตัด)';
-  document.getElementById('pdf-preview-thumb').src=dataUrl;
-  document.getElementById('pdf-undo-crop').classList.add('hidden');
-  previewLabFromFile(pendingPdfBase64, currentPdfModalId, pendingPdfType);
-}
-function processPdfFile(file){
+async function processPdfFile(file){
   if(!file){ return; }
   const isPdf = file.type==='application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   const isImage = file.type.startsWith('image/');
@@ -2200,55 +2294,43 @@ function processPdfFile(file){
     document.getElementById('pdf-err').classList.remove('hidden'); return;
   }
   document.getElementById('pdf-err').classList.add('hidden');
-  const reader=new FileReader();
-  reader.onload=async function(e){
-    let dataUrl=e.target.result;
-    pendingPdfName=file.name;
-    pendingPdfType=isImage?'image':'pdf';
-    pendingPdfOriginal=null;
-    if(isImage){
-      document.getElementById('pdf-preview-size').textContent='กำลังครอบตัดกรอบเอกสาร...';
-      pendingPdfOriginal=dataUrl; // เก็บภาพเต็มไว้เผื่อครอบตัดผิดพลาด จะได้กดยกเลิกได้
-      const cropped=await autoCropDocument(dataUrl);
-      const wasCropped = cropped!==dataUrl;
-      dataUrl=cropped;
-      document.getElementById('pdf-preview-size').textContent='กำลังย่อขนาดรูป...';
-      dataUrl=await resizeImageDataUrl(dataUrl, 1600, 0.85);
-      const undoBtn=document.getElementById('pdf-undo-crop');
-      if(undoBtn) undoBtn.classList.toggle('hidden', !wasCropped);
-    }
-    pendingPdfBase64=dataUrl;
-    document.getElementById('pdf-preview-name').textContent=file.name;
-    // ขนาดหลังย่อ (โดยประมาณจากความยาว base64)
-    const approxKB=Math.round((dataUrl.length*0.75)/1024);
-    document.getElementById('pdf-preview-size').textContent=approxKB+' KB'+(isImage?' (ครอบตัด+ย่อขนาดแล้ว)':'');
-    const thumb=document.getElementById('pdf-preview-thumb');
-    const iconEl=document.getElementById('pdf-preview-icon');
-    if(isImage){
-      thumb.src=pendingPdfBase64;
-      thumb.classList.remove('hidden');
-      iconEl.classList.add('hidden');
-    } else {
-      thumb.classList.add('hidden');
-      iconEl.classList.remove('hidden');
-      iconEl.textContent='📄';
-    }
-    document.getElementById('pdf-preview-wrap').classList.remove('hidden');
-    previewLabFromFile(pendingPdfBase64, currentPdfModalId, pendingPdfType);
-  };
-  reader.readAsDataURL(file);
+  const dataUrl=await new Promise(function(resolve){
+    const reader=new FileReader();
+    reader.onload=function(e){ resolve(e.target.result); };
+    reader.readAsDataURL(file);
+  });
+  if(isPdf){
+    // โหมด PDF ใช้ได้ทีละไฟล์เท่านั้น (ไฟล์ PDF เป็นเอกสารหลายหน้าอยู่แล้วในตัว) — ล้างรูปภาพที่ค้างไว้ก่อนหน้า
+    pendingImages=[];
+    pendingPdfBase64=dataUrl; pendingPdfName=file.name; pendingPdfType='pdf';
+    renderPendingPreview();
+    previewLabCombined();
+    return;
+  }
+  // เป็นรูปภาพ — เพิ่มเข้ารายการที่แนบ (รองรับหลายรูป เช่น ผลตรวจ 1-2 หน้า)
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType='image';
+  const cropped=await autoCropDocument(dataUrl);
+  const resized=await resizeImageDataUrl(cropped,1600,0.85);
+  pendingImages.push({dataUrl:resized, name:file.name});
+  renderPendingPreview();
+  previewLabCombined();
 }
-function previewLabFromFile(fileBase64, recordId, fileType){
+// วิเคราะห์ตัวอย่างผลแล็บจากไฟล์/รูปที่แนบไว้ทั้งหมดรวมกัน (ใช้ตอนแนบไฟล์เท่านั้น)
+function previewLabCombined(){
   if(!window.LabModule) return;
-  const r=records.find(function(x){return x.id===recordId;});
+  const r=records.find(function(x){return x.id===currentPdfModalId;});
   const gender = r ? (r.gender==='1' ? 'M' : 'F') : 'M';
   const labSection = document.getElementById('pdf-lab-preview');
   const loadingEl = document.getElementById('pdf-lab-loading');
   const contentEl = document.getElementById('pdf-lab-preview-content');
+  let srcs=[], fileType=pendingPdfType;
+  if(pendingPdfType==='pdf' && pendingPdfBase64){ srcs=[pendingPdfBase64]; }
+  else if(pendingPdfType==='image' && pendingImages.length){ srcs=pendingImages.map(function(im){return im.dataUrl;}); }
+  if(!srcs.length){ labSection.classList.add('hidden'); contentEl.innerHTML=''; return; }
   labSection.classList.remove('hidden');
   loadingEl.textContent = fileType==='image' ? 'กำลังอ่านภาพ (OCR)...' : 'กำลังอ่าน PDF...';
   contentEl.innerHTML='';
-  window.LabModule.renderInto('pdf-lab-preview-content', fileBase64, gender, fileType)
+  window.LabModule.renderFromSources('pdf-lab-preview-content', srcs, gender, fileType)
     .then(function(){ loadingEl.textContent='✅ วิเคราะห์สำเร็จ'; })
     .catch(function(){ loadingEl.textContent='⚠️ อ่านข้อมูลได้บางส่วน'; });
 }
@@ -2264,39 +2346,83 @@ function dataUrlToBlob(dataUrl){
   return new Blob([u8],{type:mime});
 }
 function savePdf(){
-  if(!pendingPdfBase64){ alert('กรุณาแนบไฟล์หรือถ่ายภาพผลตรวจ'); return; }
+  const hasPdf = pendingPdfType==='pdf' && pendingPdfBase64;
+  const hasImages = pendingPdfType==='image' && pendingImages.length>0;
+  if(!hasPdf && !hasImages){ alert('กรุณาแนบไฟล์หรือถ่ายภาพผลตรวจ'); return; }
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
-  // เก็บค่าที่ต้องใช้ต่อไว้ก่อน เพราะตัวแปร pending* จะถูกเคลียร์เมื่อปิด modal
-  const fileBase64=pendingPdfBase64, fileType=pendingPdfType, fileName=pendingPdfName;
-  const ext = fileType==='image' ? (fileName.split('.').pop()||'jpg') : 'pdf';
-  const path='pdfresults/'+r.id+'.'+ext;
-  const blob=dataUrlToBlob(fileBase64); // งานนี้เป็น local ล้วนๆ ไม่รอเน็ตเวิร์ก
-  const localPreviewUrl=URL.createObjectURL(blob); // ดูตัวอย่างได้ทันทีระหว่างรออัพโหลดจริง
+  // เก็บสำเนาไว้ก่อน เพราะตัวแปร pending* จะถูกเคลียร์เมื่อปิด modal
+  const stagedImages = hasImages ? pendingImages.slice() : [];
+  const pdfBase64 = hasPdf ? pendingPdfBase64 : null;
+  const pdfName = hasPdf ? pendingPdfName : (stagedImages.length+' รูปภาพ');
+  const fileType = pendingPdfType;
 
-  // ═══ 1) อัปเดตหน้าจอ + ปิด modal ทันที (ใช้เวลา < 1 วินาที เพราะเป็นงาน local ทั้งหมด) ═══
-  r.pdfData=localPreviewUrl; r.pdfName=fileName; r.pdfDate=new Date().toLocaleString('th-TH');
-  r.pdfPath=path; r.resultFileType=fileType; r._uploading=true;
+  // ═══ 1) อัปเดตหน้าจอ + ปิด modal ทันที (local preview ก่อน รออัพโหลดจริงเบื้องหลัง) ═══
+  const localCleanupUrls=[];
+  if(hasImages){
+    r.images = stagedImages.map(function(im){
+      const blob=dataUrlToBlob(im.dataUrl);
+      const url=URL.createObjectURL(blob);
+      localCleanupUrls.push(url);
+      return {data:url, name:im.name, path:null};
+    });
+    delete r.pdfData; delete r.pdfPath;
+  } else {
+    const ext=(pdfName.split('.').pop()||'pdf');
+    const blob=dataUrlToBlob(pdfBase64);
+    const url=URL.createObjectURL(blob);
+    localCleanupUrls.push(url);
+    r.pdfData=url; r.pdfPath='pdfresults/'+r.id+'.'+ext;
+    r.images=[];
+  }
+  r.pdfName=pdfName; r.pdfDate=new Date().toLocaleString('th-TH');
+  r.resultFileType=fileType; r._uploading=true;
   closePdfModal();
   renderAdmin();
 
-  // ═══ 2) อัพโหลดไฟล์จริงขึ้น Firebase Storage แบบเบื้องหลัง (ไม่บล็อกผู้ใช้) ═══
-  const fileRef=window._storageRef(window._storage, path);
-  window._uploadBytes(fileRef, blob)
-    .then(function(){ return window._getDownloadURL(fileRef); })
-    .then(function(url){
-      URL.revokeObjectURL(localPreviewUrl);
-      r.pdfData=url; r._uploading=false;
-      return updateRecordInFirebase(r);
-    })
+  // ═══ 2) อัพโหลดไฟล์จริงขึ้น Storage แบบเบื้องหลัง (ไม่บล็อกผู้ใช้) ═══
+  let uploadChain;
+  if(hasImages){
+    uploadChain = Promise.all(stagedImages.map(function(im,idx){
+      const ext=(im.name.split('.').pop()||'jpg');
+      const path='pdfresults/'+r.id+'_'+idx+'.'+ext;
+      const blob=dataUrlToBlob(im.dataUrl);
+      const fileRef=window._storageRef(window._storage, path);
+      return window._uploadBytes(fileRef, blob)
+        .then(function(){ return window._getDownloadURL(fileRef); })
+        .then(function(url){ return {data:url, name:im.name, path:path}; });
+    })).then(function(uploaded){
+      localCleanupUrls.forEach(function(u){ URL.revokeObjectURL(u); });
+      r.images = uploaded;
+      r._uploading=false;
+      return updateRecordInSupabase(r);
+    });
+  } else {
+    const fileRef=window._storageRef(window._storage, r.pdfPath);
+    const blob=dataUrlToBlob(pdfBase64);
+    uploadChain = window._uploadBytes(fileRef, blob)
+      .then(function(){ return window._getDownloadURL(fileRef); })
+      .then(function(url){
+        localCleanupUrls.forEach(function(u){ URL.revokeObjectURL(u); });
+        r.pdfData=url; r._uploading=false;
+        return updateRecordInSupabase(r);
+      });
+  }
+
+  uploadChain
     .then(function(){
       if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
-      // ═══ 3) วิเคราะห์ผล Lab (อ่าน PDF/OCR รูปภาพ) แบบเบื้องหลังต่อ — ไม่บล็อกผู้ใช้เช่นกัน ═══
+      // ═══ 3) วิเคราะห์ผล Lab (อ่าน PDF/OCR รูปภาพทั้งหมดรวมกัน) แบบเบื้องหลังต่อ — ไม่บล็อกผู้ใช้เช่นกัน ═══
       if(!window.LabModule) return;
-      return window.LabModule.sourceToText(fileBase64, fileType)
-        .then(function(text){
+      const srcs = hasImages ? r.images.map(function(im){return im.data;}) : [r.pdfData];
+      return srcs.reduce(function(p,src){
+          return p.then(function(textSoFar){
+            return window.LabModule.sourceToText(src, fileType).then(function(t){ return textSoFar+t+'\n'; });
+          });
+        }, Promise.resolve(''))
+        .then(function(textAll){
           const gender = r.gender==='1' ? 'M' : 'F';
-          const lab = window.LabModule.extractLab(text, gender);
+          const lab = window.LabModule.extractLab(textAll, gender);
           r.lab = lab;
           const ncd = window.LabModule.analyzeNCD(lab, gender, r.age);
           r.ncdAnalysis = ncd; // เก็บผลวิเคราะห์เต็มไว้ ใช้แสดงผลซ้ำได้โดยไม่ต้องอ่านไฟล์ใหม่
@@ -2305,7 +2431,7 @@ function savePdf(){
             return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
           }, 'low');
           r.ncdRisk = highest;
-          return updateRecordInFirebase(r);
+          return updateRecordInSupabase(r);
         })
         .then(function(){
           if(!document.getElementById('page-admin').classList.contains('hidden')){
@@ -2325,12 +2451,18 @@ async function removePdf(){
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
   try{
-    if(r.pdfPath){
-      const fileRef=window._storageRef(window._storage, r.pdfPath);
-      await window._deleteObject(fileRef).catch(function(){});
+    const deletions=[];
+    if(r.images && r.images.length){
+      r.images.forEach(function(im){
+        if(im.path) deletions.push(window._deleteObject(window._storageRef(window._storage, im.path)).catch(function(){}));
+      });
     }
-    delete r.pdfData; delete r.pdfName; delete r.pdfDate; delete r.pdfPath; delete r.lab; delete r.ncdRisk; delete r.ncdAnalysis; delete r.resultFileType;
-    await updateRecordInFirebase(r);
+    if(r.pdfPath){
+      deletions.push(window._deleteObject(window._storageRef(window._storage, r.pdfPath)).catch(function(){}));
+    }
+    await Promise.all(deletions);
+    delete r.pdfData; delete r.pdfName; delete r.pdfDate; delete r.pdfPath; delete r.images; delete r.lab; delete r.ncdRisk; delete r.ncdAnalysis; delete r.resultFileType;
+    await updateRecordInSupabase(r);
     document.getElementById('pdf-current-wrap').classList.add('hidden');
     renderAdmin();
   }catch(e){
@@ -2338,26 +2470,25 @@ async function removePdf(){
     alert('❌ ลบไฟล์ไม่สำเร็จ: '+e.message);
   }
 }
-function viewCurrentResultFile(){
-  const r=currentRecord;
-  if(!r||!r.pdfData)return;
+// เปิดหน้าต่างใหม่แสดงไฟล์ผลตรวจที่แนบไว้ทั้งหมด (รองรับทั้งกรณีหลายรูปภาพ และไฟล์ PDF เดี่ยว)
+function openFileViewer(r){
+  if(!r) return;
+  const hasImages = r.images && r.images.length;
+  if(!hasImages && !r.pdfData) return;
   const w=window.open();
-  if(r.resultFileType==='image'){
+  if(hasImages){
+    const imgsHtml = r.images.map(function(im){
+      return '<img src="'+im.data+'" style="max-width:100%;display:block;margin:0 auto 16px;">';
+    }).join('');
+    w.document.write('<div style="background:#111;min-height:100vh;padding:16px 0;margin:0;">'+imgsHtml+'</div>');
+  } else if(r.resultFileType==='image'){
     w.document.write('<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111;margin:0;"><img src="'+r.pdfData+'" style="max-width:100%;max-height:100vh;"></div>');
   } else {
     w.document.write('<iframe src="'+r.pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
   }
 }
-function viewPdfCurrent(){
-  const r=records.find(function(x){return x.id===currentPdfModalId;});
-  if(!r||!r.pdfData)return;
-  const w=window.open();
-  if(r.resultFileType==='image'){
-    w.document.write('<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111;margin:0;"><img src="'+r.pdfData+'" style="max-width:100%;max-height:100vh;"></div>');
-  } else {
-    w.document.write('<iframe src="'+r.pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
-  }
-}
+function viewCurrentResultFile(){ openFileViewer(currentRecord); }
+function viewPdfCurrent(){ openFileViewer(records.find(function(x){return x.id===currentPdfModalId;})); }
 function closePdfViewer(){}
 // ======= EXPORT =======
 function exportAllExcel(){
@@ -2369,53 +2500,77 @@ function exportSingleExcel(){
   exportPomsat11([currentRecord]);
 }
 // ======= PDF EXPORT (ผลตรวจสุขภาพประจำปี) =======
+// แปลง URL ของไฟล์ (เช่น URL จาก Storage) เป็น dataURL — ใช้ฝังลง PDF ได้แน่นอน ไม่ขึ้นกับ CORS ของ <img>/canvas
+function urlToDataUrl(url){
+  return new Promise(function(resolve,reject){
+    if(url.startsWith('data:')||url.startsWith('blob:')){
+      fetch(url).then(function(res){return res.blob();}).then(function(blob){
+        const reader=new FileReader();
+        reader.onload=function(){resolve(reader.result);};
+        reader.onerror=function(){reject(new Error('อ่านไฟล์ไม่สำเร็จ'));};
+        reader.readAsDataURL(blob);
+      }).catch(reject);
+      return;
+    }
+    fetch(url).then(function(res){
+      if(!res.ok) throw new Error('โหลดไฟล์ไม่สำเร็จ (HTTP '+res.status+')');
+      return res.blob();
+    }).then(function(blob){
+      const reader=new FileReader();
+      reader.onload=function(){resolve(reader.result);};
+      reader.onerror=function(){reject(new Error('อ่านไฟล์ไม่สำเร็จ'));};
+      reader.readAsDataURL(blob);
+    }).catch(reject);
+  });
+}
+function getImageDimensions(dataUrl){
+  return new Promise(function(resolve,reject){
+    const img=new Image();
+    img.onload=function(){resolve({width:img.naturalWidth,height:img.naturalHeight});};
+    img.onerror=function(){reject(new Error('อ่านขนาดรูปไม่สำเร็จ'));};
+    img.src=dataUrl;
+  });
+}
+function detectImageFormat(dataUrl){
+  const m=dataUrl.match(/^data:image\/(\w+)/i);
+  const t=m?m[1].toLowerCase():'jpeg';
+  if(t==='png') return 'PNG';
+  if(t==='webp') return 'WEBP';
+  return 'JPEG';
+}
+// ดาวน์โหลดเฉพาะ "รูปภาพผลตรวจที่แนบไว้" เท่านั้น (ไม่รวมสรุปคะแนน/ผลวิเคราะห์)
+// รองรับหลายรูป (เช่น ผลตรวจ 1-2 หน้า) โดยแต่ละรูปจะเป็นคนละหน้าใน PDF
 async function downloadResultPDF(){
   if(!currentRecord){alert('ไม่พบข้อมูลผลตรวจ');return;}
+  const r=currentRecord;
+  const imgList = (r.images && r.images.length) ? r.images
+    : (r.resultFileType==='image' && r.pdfData ? [{data:r.pdfData,name:r.pdfName}] : null);
   const btn=document.getElementById('result-pdf-btn');
   const origLabel=btn?btn.textContent:'';
+  if(!imgList){
+    if(r.resultFileType==='pdf' && r.pdfData){
+      // เป็นไฟล์ PDF อยู่แล้ว เปิดไฟล์ต้นฉบับให้แทนการสร้างใหม่
+      window.open(r.pdfData,'_blank');
+      return;
+    }
+    alert('ยังไม่มีรูปภาพผลตรวจแนบในระบบ');
+    return;
+  }
   if(btn){btn.disabled=true;btn.textContent='⏳ กำลังสร้าง PDF...';}
   try{
-    // รอให้การวิเคราะห์ผลตรวจ Lab (OCR/PDF parsing) เสร็จสมบูรณ์ก่อน เพื่อไม่ให้ PDF ที่ดาวน์โหลด
-    // จับภาพได้แค่ข้อความ "กำลังวิเคราะห์..." แทนผลจริง
-    if(window._labRenderPromise){
-      if(btn){btn.textContent='⏳ กำลังรอผลวิเคราะห์ Lab...';}
-      try{ await window._labRenderPromise; }catch(e){ /* แสดงข้อความ error ในหน้าอยู่แล้ว ไปต่อได้ */ }
-      if(btn){btn.textContent='⏳ กำลังสร้าง PDF...';}
-    }
-    const src=document.getElementById('result-pdf-capture');
-    if(!src) throw new Error('ไม่พบเนื้อหาผลตรวจ');
-    // สร้างสำเนาชั่วคราวเพื่อจัดความกว้างให้เหมาะกับการพิมพ์ PDF โดยไม่กระทบหน้าจอจริง
-    const clone=src.cloneNode(true);
-    clone.querySelectorAll('.hidden').forEach(function(el){ el.style.display='none'; });
-    clone.style.width='860px';
-    clone.style.background='#ffffff';
-    clone.style.padding='16px';
-    const wrap=document.createElement('div');
-    wrap.style.position='fixed';
-    wrap.style.left='-9999px';
-    wrap.style.top='0';
-    wrap.appendChild(clone);
-    document.body.appendChild(wrap);
-    const canvas=await html2canvas(clone,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
-    document.body.removeChild(wrap);
-    const imgData=canvas.toDataURL('image/jpeg',0.92);
     const { jsPDF }=window.jspdf;
     const pdf=new jsPDF('p','pt','a4');
     const pageW=pdf.internal.pageSize.getWidth();
     const pageH=pdf.internal.pageSize.getHeight();
-    const imgW=pageW;
-    const imgH=canvas.height*imgW/canvas.width;
-    let heightLeft=imgH;
-    let position=0;
-    pdf.addImage(imgData,'JPEG',0,position,imgW,imgH);
-    heightLeft-=pageH;
-    while(heightLeft>0){
-      position=heightLeft-imgH;
-      pdf.addPage();
-      pdf.addImage(imgData,'JPEG',0,position,imgW,imgH);
-      heightLeft-=pageH;
+    for(let i=0;i<imgList.length;i++){
+      const dataUrl=await urlToDataUrl(imgList[i].data);
+      const dims=await getImageDimensions(dataUrl);
+      let w=pageW, h=dims.height*(pageW/dims.width);
+      if(h>pageH){ h=pageH; w=dims.width*(pageH/dims.height); }
+      const x=(pageW-w)/2, y=(pageH-h)/2;
+      if(i>0) pdf.addPage();
+      pdf.addImage(dataUrl, detectImageFormat(dataUrl), x, y, w, h);
     }
-    const r=currentRecord;
     const fname='ผลตรวจสุขภาพ_'+(r.fname||'')+'_'+(r.lname||'')+'.pdf';
     pdf.save(fname);
   }catch(e){
