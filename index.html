@@ -44,7 +44,12 @@
   const ADMIN_EMAIL_DOMAIN = "pymk-health.local";
   window._usernameToEmail = function(u){ return u.includes('@') ? u : (u+'@'+ADMIN_EMAIL_DOMAIN); };
 
-  // ── รอให้หน้าเว็บโหลดเสร็จ แล้วเริ่มต้นระบบ (ตรวจสอบ session แอดมินที่ค้างอยู่ ถ้ามี) ──
+  // ── เริ่มต้นระบบทันที (ตรวจสอบ session แอดมินที่ค้างอยู่ ถ้ามี) ──
+  // หมายเหตุ: ไม่รอ event 'load' อีกต่อไป เพราะ event นี้ต้องรอให้ "ทุกทรัพยากร" ในหน้าเว็บ
+  // (ฟอนต์, สคริปต์ CDN ต่างๆ) โหลดเสร็จสมบูรณ์ก่อน ถ้ามีอันใดอันหนึ่งถูกเบราว์เซอร์บล็อกแบบเงียบๆ
+  // (ไม่ error แต่ก็ไม่โหลดเสร็จ) event 'load' จะไม่มีวันเกิดขึ้นเลย ทำให้ระบบไม่เริ่มทำงานตลอดไป
+  // การเรียก tryLoad() ทันทีปลอดภัย เพราะตัวมันเองมีกลไก retry ทุก 50ms รอจนกว่า
+  // window.loadFromSupabase จะถูกประกาศ (ซึ่งอยู่ท้ายไฟล์ ใกล้ </body>)
   function tryLoad() {
     if (typeof window.loadFromSupabase === 'function') {
       window.loadFromSupabase();
@@ -52,11 +57,7 @@
       setTimeout(tryLoad, 50);
     }
   }
-  if (document.readyState === 'complete') {
-    tryLoad();
-  } else {
-    window.addEventListener('load', tryLoad);
-  }
+  tryLoad();
 </script>
 <style>
 :root{
@@ -2598,10 +2599,10 @@ async function downloadResultPDF(){
     if(btn){btn.disabled=false;btn.textContent=origLabel;}
   }
 }
-window.addEventListener('load', function(){
-  initDOBDropdowns('login-dob-day','login-dob-month','login-dob-year');
-  showLoadingOverlay('กำลังโหลดข้อมูล...');
-});
+// สคริปต์ก้อนนี้อยู่ท้าย <body> แล้ว เมื่อรันถึงตรงนี้ DOM ถูก parse ครบแล้ว
+// จึงเรียกใช้งานได้ทันที ไม่ต้องรอ event 'load' (ซึ่งต้องรอทรัพยากรอื่นๆ เช่นฟอนต์/สคริปต์ CDN
+// โหลดเสร็จก่อน และถ้ามีตัวใดถูกบล็อกแบบเงียบๆ event นี้จะไม่มีวันเกิดขึ้นเลย)
+initDOBDropdowns('login-dob-day','login-dob-month','login-dob-year');
 </script>
 </body>
 </html>
