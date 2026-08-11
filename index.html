@@ -13,22 +13,15 @@
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // ══════════════════════════════════════════════════════════════════════
-  //  ตั้งค่า Supabase — ใส่ค่าโปรเจกต์ของคุณเองที่นี่
-  //  (Supabase Dashboard → Project Settings → API)
-  // ══════════════════════════════════════════════════════════════════════
   const SUPABASE_URL = "https://mddgtfrutqhzuqrecnvi.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_yLaj8eex5ETsP2ptTzPntw_k39wkxtP";
-  // ชื่อ Storage bucket ที่ใช้เก็บไฟล์ผลตรวจ (ต้องตรงกับที่สร้างไว้ใน supabase-schema.sql)
   const RESULT_BUCKET = "result-files";
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   window._sb = sb;
 
-  // ── ชั้นเชื่อมต่อไฟล์ (Storage) — คงชื่อฟังก์ชันเดิมไว้เหมือน Firebase Storage SDK
-  // เพื่อให้โค้ดส่วนแนบไฟล์/ลบไฟล์ที่เหลือของแอปไม่ต้องแก้ไข ══════
-  window._storage = true; // ไม่ได้ใช้จริง เก็บไว้เพื่อ compat กับโค้ดเดิมที่ส่ง argument นี้มา
-  window._storageRef = function(_storage, path){ return path; }; // แค่ส่ง path string กลับไปใช้ต่อ
+  window._storage = true;
+  window._storageRef = function(_storage, path){ return path; };
   window._uploadBytes = function(path, blob){
     return sb.storage.from(RESULT_BUCKET).upload(path, blob, { upsert:true, contentType: blob.type||'application/octet-stream' });
   };
@@ -40,16 +33,9 @@
     return sb.storage.from(RESULT_BUCKET).remove([path]);
   };
 
-  // ── แปลง username ↔ email ภายใน (Supabase Auth ต้องใช้อีเมล แต่หน้าจอแอดมินยังกรอกแค่ username) ──
   const ADMIN_EMAIL_DOMAIN = "pymk-health.local";
   window._usernameToEmail = function(u){ return u.includes('@') ? u : (u+'@'+ADMIN_EMAIL_DOMAIN); };
 
-  // ── เริ่มต้นระบบทันที (ตรวจสอบ session แอดมินที่ค้างอยู่ ถ้ามี) ──
-  // หมายเหตุ: ไม่รอ event 'load' อีกต่อไป เพราะ event นี้ต้องรอให้ "ทุกทรัพยากร" ในหน้าเว็บ
-  // (ฟอนต์, สคริปต์ CDN ต่างๆ) โหลดเสร็จสมบูรณ์ก่อน ถ้ามีอันใดอันหนึ่งถูกเบราว์เซอร์บล็อกแบบเงียบๆ
-  // (ไม่ error แต่ก็ไม่โหลดเสร็จ) event 'load' จะไม่มีวันเกิดขึ้นเลย ทำให้ระบบไม่เริ่มทำงานตลอดไป
-  // การเรียก tryLoad() ทันทีปลอดภัย เพราะตัวมันเองมีกลไก retry ทุก 50ms รอจนกว่า
-  // window.loadFromSupabase จะถูกประกาศ (ซึ่งอยู่ท้ายไฟล์ ใกล้ </body>)
   function tryLoad() {
     if (typeof window.loadFromSupabase === 'function') {
       window.loadFromSupabase();
@@ -70,7 +56,6 @@
 .mb-4{margin-bottom:1rem!important}.mb-2{margin-bottom:.5rem!important}
 .mt-4{margin-top:1rem!important}.mt-2{margin-top:.5rem!important}
 .hidden{display:none!important}
-/* ===== Mobile responsive ===== */
 @media(max-width:640px){
   body{padding:8px!important;}
   h1{font-size:16px!important;}
@@ -124,7 +109,6 @@
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;}
 #lab-module-section{margin-top:1rem;}
 </style>
-<!-- Lab Module CSS -->
 <style id="lm-css">
   .lm{font-family:-apple-system,'Sarabun',sans-serif;font-size:15px;color:#1a1a1a}
   .lm-card{background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:1rem 1.25rem;margin-bottom:.875rem}
@@ -172,7 +156,7 @@
 <!-- HEADER -->
 <div style="max-width:960px;margin:0 auto 20px;">
   <div class="sc p-4 header-bar" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(135deg,#ffffff 0%,var(--brand-gold-light) 100%);border-top:3px solid var(--brand-red);">
-    <img src="data:image/png;base64,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" alt="โลโก้โรงพยาบาลค่ายพระยอดเมืองขวาง" style="width:48px;height:auto;flex-shrink:0;">
+    <div style="width:48px;height:48px;background:var(--brand-red);border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;">รพ</div>
     <div style="min-width:0;">
       <h1 style="font-size:17px;font-weight:700;color:var(--brand-red-dark);margin:0;">ระบบตรวจสุขภาพประจำปี</h1>
       <p style="font-size:12px;color:var(--brand-green-dark);margin:0;font-weight:600;">โรงพยาบาลค่ายพระยอดเมืองขวาง</p>
@@ -412,12 +396,10 @@
   </div>
   <div id="result-pdf-capture">
   <div id="result-content"></div>
-  <!-- ════ ไฟล์ผลตรวจแนบ (ให้ผู้เข้ารับบริการเห็นด้วย ไม่ใช่แค่แอดมิน) ════ -->
   <div id="attached-file-section" class="hidden sc p-4 mb-4">
     <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px;">📎 ไฟล์ผลตรวจแนบ</h3>
     <div id="attached-file-content"></div>
   </div>
-  <!-- ════ ส่วนผลตรวจ Lab ════ -->
   <div id="lab-module-section" class="hidden">
     <div class="sc p-4 mb-2" style="background:#fdf3e0;border-color:#f0d896;">
       <h3 style="font-size:15px;font-weight:700;color:#7f1621;margin:0;display:flex;align-items:center;gap:8px;">
@@ -456,7 +438,6 @@
       <button onclick="adminLogout()" style="background:#fee2e2;color:#dc2626;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">🚪 ออกจากระบบ</button>
     </div>
   </div>
-  <!-- NCD Dashboard (ใหม่) -->
   <div id="ncd-dashboard" style="margin-bottom:12px;"></div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;" id="admin-stats"></div>
   <div class="sc p-4" style="margin-bottom:12px;">
@@ -518,7 +499,6 @@
         <button onclick="removePdf()" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:Sarabun,sans-serif;">ลบออก</button>
       </div>
     </div>
-    <!-- ตัวเลือกการแนบไฟล์ -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div style="border:2px dashed #d1d5db;border-radius:10px;padding:18px 10px;text-align:center;cursor:pointer;transition:border-color .2s;" id="pdf-drop-zone" onclick="document.getElementById('pdf-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='#b7202b'" ondragleave="this.style.borderColor='#d1d5db'" ondrop="handlePdfDrop(event)">
         <div style="font-size:28px;margin-bottom:6px;">📂</div>
@@ -544,7 +524,6 @@
       <button onclick="clearPdfPreview()" style="background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;">✕</button>
     </div>
     <div id="pdf-preview-images" class="hidden" style="margin-top:8px;padding:10px 14px;background:#fdf3e0;border:1px solid #f0d896;border-radius:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"></div>
-    <!-- Preview Lab -->
     <div id="pdf-lab-preview" class="hidden" style="margin-top:16px;border-top:2px solid #fdf3e0;padding-top:14px;">
       <div style="font-size:13px;font-weight:700;color:#7f1621;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
         🔬 ตัวอย่างการวิเคราะห์ผลตรวจ
@@ -560,7 +539,6 @@
   </div>
 </div>
 <!-- MODAL ดู PDF -->
-
 <div id="modal-pdf-viewer" class="hidden modal-overlay" style="padding:16px;">
   <div style="background:white;border-radius:12px;width:90vw;max-width:860px;height:90vh;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:14px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
@@ -679,13 +657,45 @@
   async function sourceToText(src,fileType){
     return fileType==='image' ? imageToText(src) : pdfToText(src);
   }
+
+  // แปลงหน้า PDF หนึ่งหน้าให้เป็นรูปภาพ (dataURL) โดยใช้ pdf.js render ลง canvas
+  // ใช้เมื่อ PDF เป็นไฟล์สแกน/ถ่ายภาพที่ไม่มีเลเยอร์ข้อความฝังอยู่
+  async function pdfPageToImage(page, scale){
+    scale = scale || 2; // ยิ่งสูงยิ่งคมชัด แต่ช้าลง — 2 พอดีสำหรับ OCR
+    const viewport = page.getViewport({ scale: scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+    return canvas.toDataURL('image/png');
+  }
+
   async function pdfToText(src){
     const lib=await loadPdfJs();
     const p=await lib.getDocument(typeof src==='string'?{url:src}:{data:src}).promise;
     let t='';
     for(let i=1;i<=p.numPages;i++){const pg=await p.getPage(i);const tc=await pg.getTextContent();t+=tc.items.map(x=>x.str).join(' ')+'\n';}
+
+    // ═══ ตรวจจับ PDF แบบสแกน/ถ่ายภาพ (ไม่มีเลเยอร์ข้อความจริง) ═══
+    // ถ้าดึงข้อความได้น้อยเกินไป (ต่ำกว่า 40 ตัวอักษรหลังตัดช่องว่าง) แสดงว่า
+    // PDF นี้แทบไม่มีข้อความฝังอยู่เลย ให้ fallback ไปแปลงแต่ละหน้าเป็นรูปภาพ
+    // แล้วอ่านด้วย OCR (Tesseract) แทน เพื่อให้ยังดึงค่าผลตรวจออกมาได้
+    if(t.replace(/\s/g,'').length < 40){
+      let ocrText = '';
+      for(let i=1;i<=p.numPages;i++){
+        const pg = await p.getPage(i);
+        const imgDataUrl = await pdfPageToImage(pg, 2);
+        const pageText = await imageToText(imgDataUrl);
+        ocrText += pageText + '\n';
+      }
+      if(ocrText.replace(/\s/g,'').length > t.replace(/\s/g,'').length){
+        return ocrText;
+      }
+    }
     return t;
   }
+
   function n(text,re){const m=text.match(re);return m?parseFloat(m[1]):null;}
   function extractLab(text,gender){
     const f=gender==='F';
@@ -713,11 +723,9 @@
     d.urineGlucose=!/Glucose Negative/.test(text)&&/Glucose/.test(text);
     d.urineRBC=n(text,/(\d+)-\d+\s+RBC\s+0\s*-\s*2/);
     d.urinePeriod=/มีประจำเดือน|มีประจําเดือน/.test(text);
-    // CBC abnormal: Hct<40% (male) or per ref range, or other CBC values out of range
     const hctRefLo=f?36:40;
     d.cbcAbnormal = (d.hb!==null&&d.hb<(f?12:14)) || (d.hct!==null&&d.hct<hctRefLo) ||
       (d.wbc!==null&&(d.wbc<4||d.wbc>10)) || (d.plt!==null&&(d.plt<140||d.plt>440));
-    // Blood chemistry abnormal: any of glucose/chol/tg/bun/cr/uric/ast/alt out of normal range
     d.bloodChemAbnormal = (d.fbs!==null&&(d.fbs<70||d.fbs>100)) ||
       (d.chol!==null&&d.chol>200) || (d.tg!==null&&d.tg>=150) ||
       (d.bun!==null&&(d.bun<6||d.bun>20)) ||
@@ -927,7 +935,6 @@
   async function renderFromFile(file,containerId,gender){
     return renderInto(containerId,await file.arrayBuffer(),gender);
   }
-  // อ่าน+วิเคราะห์จากหลายไฟล์/รูปรวมกัน (เช่น ผลตรวจ 2 หน้า) แล้วรวมข้อความก่อนสกัดค่า
   async function renderFromSources(containerId,srcs,gender,fileType){
     const el=document.getElementById(containerId);
     if(!el)return;
@@ -947,8 +954,6 @@
       throw e;
     }
   }
-  // แสดงผลจากข้อมูล lab ที่วิเคราะห์และบันทึกไว้แล้ว (ไม่ต้องโหลด/อ่านไฟล์ซ้ำ)
-  // ใช้เมื่อเปิดดูผลตรวจซ้ำ เพื่อให้ข้อมูลตรงกับที่แดชบอร์ดและ PDF ใช้เสมอ
   function renderFromData(containerId,lab,gender,ncd){
     const el=document.getElementById(containerId);
     if(!el)return;
@@ -1067,7 +1072,6 @@ window.exportPomsat11 = function(recs) {
   const rows = recs.map((r, i) => {
     const lab = r.lab || {};
     const f = r.gender !== '1';
-    // CBC: 1=ปกติ, 2=ผิดปกติ, 0=ไม่ได้ตรวจ/ไม่มีข้อมูล
     const hasCbc = lab.hb!=null || lab.hct!=null || lab.wbc!=null || lab.plt!=null || lab.rbc!=null;
     const cbcResult = hasCbc ? (lab.cbcAbnormal ? 2 : 1) : '';
     const cbcAbn = [];
@@ -1076,12 +1080,10 @@ window.exportPomsat11 = function(recs) {
     if(lab.hb!=null && lab.hb < (f?12:14)) cbcAbn.push({flag:true,label:`Hb ${lab.hb}`});
     if(lab.wbc!=null && (lab.wbc<4||lab.wbc>10)) cbcAbn.push({flag:true,label:`WBC ${lab.wbc}`});
     if(lab.plt!=null && (lab.plt<140||lab.plt>440)) cbcAbn.push({flag:true,label:`Plt ${lab.plt}`});
-    // Urine
     const hasUrine = lab.urineBlood!=null || lab.urineProtein!=null || lab.urineGlucose!=null || lab.urineRBC!=null;
     const urineResult = hasUrine ? ((lab.urineBlood||lab.urineProtein||lab.urineGlucose) ? 2 : 1) : '';
     const urineAbn = [];
     if(lab.urineGlucose) urineAbn.push('พบน้ำตาลในปัสสาวะ');
-    // Blood chemistry
     const hasChem = lab.fbs!=null || lab.chol!=null || lab.tg!=null || lab.bun!=null || lab.creat!=null || lab.uric!=null || lab.ast!=null || lab.alt!=null;
     const chemResult = hasChem ? (lab.bloodChemAbnormal ? 2 : 1) : '';
     const chemAbn = [];
@@ -1094,7 +1096,6 @@ window.exportPomsat11 = function(recs) {
     if(lab.uric!=null && (lab.uric<(f?2.4:3.4)||lab.uric>(f?6.0:7.0))) chemAbn.push(`Uric ${lab.uric}`);
     if(lab.ast!=null && lab.ast>(f?35:40)) chemAbn.push(`AST ${lab.ast}`);
     if(lab.alt!=null && lab.alt>(f?35:40)) chemAbn.push(`ALT ${lab.alt}`);
-    // โรคประจำตัว: 0=ไม่มี,1=ความดัน,2=เบาหวาน,3=หัวใจ,4=ไขมัน,5=>=2โรค,6=อื่นๆ
     let ncdCode = 0;
     if(r.hasNCD && r.ncds && r.ncds.length>0){
       ncdCode = r.ncds.length>=2 ? 5 : r.ncds[0];
@@ -1119,10 +1120,10 @@ window.exportPomsat11 = function(recs) {
       r.height || '',
       r.bmi || '',
       r.waist || '',
-      '', // Systolic - ไม่มีในฟอร์ม
-      '', // Diastolic - ไม่มีในฟอร์ม
-      '', // Chest x-ray ผล - ไม่มีในฟอร์ม
-      '', // Chest x-ray ผิดปกติ
+      '',
+      '',
+      '',
+      '',
       pres(urineResult),
       lab.urineProtein ? 2 : (hasUrine?1:''),
       lab.urineBlood ? 2 : (hasUrine?1:''),
@@ -1146,13 +1147,13 @@ window.exportPomsat11 = function(recs) {
       r.smoke!=null?r.smoke:'',
       r.alcohol!=null?r.alcohol:'',
       r.exercise!=null?r.exercise:'',
-      '', // สุขภาพฟัน - ไม่มีในฟอร์ม
-      '', // ST5 - ไม่มีในฟอร์ม
+      '',
+      '',
       r.q9!=null?r.q9:'',
       r.q8!=null?r.q8:'',
       {green:0,yellow:1,red:2}[r.colorGroup] ?? '',
-      0, // การประเมินซ้ำ
-      0, // การส่งพบแพทย์
+      0,
+      0,
     ];
   });
   const wsData = [headers, ...rows];
@@ -1160,7 +1161,6 @@ window.exportPomsat11 = function(recs) {
   ws['!cols'] = headers.map(() => ({wch: 16}));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'รง.ผสต.11');
-  // Sheet 2: สรุปสถิติ
   const totalN = recs.length;
   const ncdH = recs.filter(r => r.ncdRisk === 'high').length;
   const ncdM = recs.filter(r => r.ncdRisk === 'medium').length;
@@ -1207,8 +1207,6 @@ function hideLoadingOverlay(){
   const el = document.getElementById('fb-loading-overlay');
   if(el) el.style.display = 'none';
 }
-// โหลดข้อมูลทุกรายการ (เฉพาะแอดมินที่ล็อกอินเท่านั้น — ผู้เข้ารับบริการทั่วไปจะไม่ถูกโหลดข้อมูลทั้งหมด
-// มาไว้ในเครื่อง เพราะถูกกันไว้ด้วย Row Level Security ต้องค้นหาผ่าน RPC เฉพาะรายคนเท่านั้น)
 async function loadAllRecordsForAdmin(){
   const { data, error } = await window._sb.from('hc_records').select('id,data').order('id',{ascending:false});
   if(error){
@@ -1224,10 +1222,6 @@ async function fetchAllAdminProfiles(){
   if(error){ console.error('Load admin_profiles error:', error); return []; }
   return (data||[]).map(function(p){ return {id:p.id, name:p.name, username:p.username, isDefault:p.is_default}; });
 }
-// เรียกตอนโหลดหน้าเว็บครั้งแรก — ถ้ามี session แอดมินค้างอยู่ (เช่น รีเฟรชหน้า) จะโหลดข้อมูลกลับมาให้อัตโนมัติ
-// ป้องกันหน้าเว็บค้าง "กำลังโหลด..." ตลอดไป กรณีเบราว์เซอร์บล็อกการเข้าถึง localStorage
-// (เช่น ฟีเจอร์ Tracking Prevention ของ Edge) ทำให้ตรวจสอบ session ค้างไม่ตอบสนอง —
-// ถ้าเกิน 5 วินาทีจะถือว่า "ไม่มี session ค้างอยู่" แล้วให้ผู้ใช้ล็อกอินเองตามปกติ
 function withTimeout(promise, ms, fallbackValue){
   return Promise.race([
     promise,
@@ -1243,7 +1237,7 @@ window.loadFromSupabase = async function(){
       { data: { session: null }, _timedOut: true }
     );
     if(sessionResult._timedOut){
-      console.warn('Session check timed out after 5s — treating as no active session. (This can happen if the browser blocks localStorage access for third-party scripts, e.g. Edge Tracking Prevention.)');
+      console.warn('Session check timed out after 5s — treating as no active session.');
     }
     const session = sessionResult.data.session;
     if(session){
@@ -1253,7 +1247,6 @@ window.loadFromSupabase = async function(){
         await loadAllRecordsForAdmin();
         admins = await fetchAllAdminProfiles();
       } else {
-        // session มีอยู่แต่ไม่ใช่บัญชีแอดมิน (ไม่มีสิทธิ์) — ออกจากระบบทิ้ง
         await window._sb.auth.signOut();
       }
     }
@@ -1264,12 +1257,9 @@ window.loadFromSupabase = async function(){
     hideLoadingOverlay();
     console.error('Supabase load error:', e);
     _firebaseReady = true;
-    // ไม่ต้อง alert แล้วบล็อกผู้ใช้ — ปล่อยให้ใช้งานหน้าเว็บต่อได้ตามปกติ (ล็อกอินเองได้ถ้าจำเป็น)
   }
 };
 async function saveAll(){}
-// บันทึก/อัปเดตข้อมูลผู้เข้ารับบริการ 1 รายการ — เก็บทั้งก้อนเป็น JSON ในคอลัมน์ data (upsert)
-// ใช้ตอนผู้เข้ารับบริการลงทะเบียนใหม่ (ยังไม่ได้ล็อกอิน) — insert อย่างเดียว ตรงกับสิทธิ์ที่ RLS อนุญาตให้ anon
 async function saveRecordToSupabase(rec){
   try {
     const { error } = await window._sb.from('hc_records').insert({ id: rec.id, data: rec, updated_at: new Date().toISOString() });
@@ -1279,7 +1269,6 @@ async function saveRecordToSupabase(rec){
     alert('❌ บันทึกข้อมูลไม่สำเร็จ: ' + e.message);
   }
 }
-// ใช้ตอนแอดมิน (ล็อกอินแล้ว) แก้ไข/อัปเดตข้อมูลเดิม — upsert ได้ เพราะมีสิทธิ์เต็มตาม RLS
 async function updateRecordInSupabase(rec){
   try {
     const { error } = await window._sb.from('hc_records').upsert({ id: rec.id, data: rec, updated_at: new Date().toISOString() });
@@ -1289,7 +1278,6 @@ async function updateRecordInSupabase(rec){
     alert('❌ บันทึกข้อมูลไม่สำเร็จ: ' + e.message);
   }
 }
-// ======= ลบรายการที่ลงทะเบียนซ้ำ =======
 async function deleteRecord(id){
   const r=records.find(function(x){return x.id===id;});
   if(!r)return;
@@ -1297,7 +1285,6 @@ async function deleteRecord(id){
   if(!confirm('ยืนยันลบข้อมูลของ "'+fullName.trim()+'" ?\nการลบนี้ไม่สามารถกู้คืนได้ (ใช้สำหรับกรณีลงทะเบียนซ้ำ)')) return;
   try{
     showLoadingOverlay('กำลังลบข้อมูล...');
-    // ลบไฟล์ผลตรวจที่แนบไว้ใน Storage ด้วย (ถ้ามี) เพื่อไม่ให้เป็นไฟล์ค้าง — รองรับทั้งหลายรูปภาพและไฟล์ PDF เดี่ยว
     const deletions=[];
     if(r.images && r.images.length){
       r.images.forEach(function(im){
@@ -1437,9 +1424,6 @@ function renderAdminList(){
       +'</td></tr>';
   }).join('');
 }
-// หมายเหตุสำคัญ: Supabase Auth (client-side, ใช้ anon key) ไม่มีทาง "สร้างผู้ใช้ใหม่โดยไม่สลับ session"
-// การเรียก signUp() จะทำให้เบราว์เซอร์เปลี่ยนไปเป็น session ของผู้ใช้ใหม่ทันที (เป็นข้อจำกัดของ Supabase เอง
-// ไม่ใช่บั๊ก) — ดังนั้นหลังเพิ่มแอดมินสำเร็จ ระบบจะออกจากระบบและให้เข้าสู่ระบบใหม่อีกครั้ง
 async function addAdmin(){
   const name = document.getElementById('new-admin-name').value.trim();
   const user = document.getElementById('new-admin-user').value.trim();
@@ -1474,9 +1458,6 @@ async function addAdmin(){
     errEl.textContent='เกิดข้อผิดพลาด: '+e.message; errEl.classList.remove('hidden');
   }
 }
-// ลบ = เพิกถอนสิทธิ์แอดมิน (ลบแถวใน admin_profiles) ทันที ตัวบัญชีเข้าสู่ระบบ (Supabase Auth) ยังอยู่
-// แต่จะเข้าใช้งานหน้าแอดมินไม่ได้อีก เพราะ RLS ทุกตารางอ้างอิงการเป็นสมาชิกใน admin_profiles
-// (การลบบัญชี Auth ทิ้งจริงๆ ต้องทำผ่าน Supabase Dashboard หรือ service role เท่านั้น ไม่สามารถทำจากฝั่งเว็บได้)
 async function deleteAdmin(i){
   const target = admins[i];
   if(!confirm('ยืนยันการลบแอดมิน "'+target.name+'" ?\n(จะถูกเพิกถอนสิทธิ์เข้าใช้งานระบบทันที)')) return;
@@ -1713,8 +1694,6 @@ async function doLogin(){
   const origLabel=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='⏳ กำลังตรวจสอบ...';}
   try{
-    // ค้นหาผ่านฟังก์ชัน RPC (get_own_record) แทนการอ่านทั้งตาราง — ตรงกับหลัก Row Level Security
-    // ที่ตั้งไว้ใน Supabase: ผู้เข้ารับบริการจะเห็นได้เฉพาะข้อมูลของตัวเอง (ยืนยันด้วยเลขบัตร+วันเกิด) เท่านั้น
     const { data, error } = await window._sb.rpc('get_own_record', { p_idcard: id, p_dob: dobVal });
     if(error) throw error;
     const found = data || [];
@@ -1735,11 +1714,8 @@ async function doLogin(){
   }
 }
 // ======= RENDER RESULT =======
-
-// ======= คำแนะนำพฤติกรรมสุขภาพ =======
 function buildLifestyleAdviceHTML(r){
   const cards=[];
-  // คำแนะนำการสูบบุหรี่
   const smokeAdvice=[
     {title:'ไม่เคยสูบบุหรี่',body:'ยอดเยี่ยมมาก! ควรหลีกเลี่ยงควันบุหรี่มือสองและรักษาพฤติกรรมนี้ต่อไป'},
     {title:'เคยสูบ แต่เลิกแล้ว',body:'ยินดีด้วยที่เลิกสูบได้สำเร็จ ควรหลีกเลี่ยงสิ่งกระตุ้นที่ทำให้กลับไปสูบอีก และออกกำลังกายสม่ำเสมอเพื่อฟื้นฟูสุขภาพปอด'},
@@ -1749,7 +1725,6 @@ function buildLifestyleAdviceHTML(r){
   if(smokeAdvice){
     cards.push({icon:'🚬',color:'#374151',bg:'#f3f4f6',title:'คำแนะนำเรื่องการสูบบุหรี่: '+smokeAdvice.title,body:smokeAdvice.body});
   }
-  // คำแนะนำการดื่มสุรา
   const alcAdvice=[
     {title:'ไม่เคยดื่มสุรา',body:'ดีมาก ควรรักษาพฤติกรรมนี้ต่อไปเพื่อสุขภาพตับและหัวใจที่ดี'},
     {title:'เคยดื่ม แต่เลิกแล้ว',body:'ยินดีด้วยที่เลิกดื่มได้ ควรหลีกเลี่ยงสถานการณ์ที่กระตุ้นให้กลับไปดื่มอีก'},
@@ -1759,7 +1734,6 @@ function buildLifestyleAdviceHTML(r){
   if(alcAdvice){
     cards.push({icon:'🍺',color:'#6C3483',bg:'#f5f3ff',title:'คำแนะนำเรื่องการดื่มแอลกอฮอล์: '+alcAdvice.title,body:alcAdvice.body});
   }
-  // คำแนะนำการออกกำลังกาย
   const exAdvice=[
     {title:'ไม่ออกกำลังกาย',body:'ควรเริ่มออกกำลังกายเบาๆ เช่น เดินเร็ว 10-15 นาทีต่อวัน แล้วค่อยเพิ่มเวลาและความหนักขึ้นทีละน้อย เพื่อลดความเสี่ยงโรคอ้วน เบาหวาน และโรคหัวใจ'},
     {title:'ออกกำลังกายต่ำกว่าเกณฑ์',body:'แนะนำให้เพิ่มความสม่ำเสมอ โดยตั้งเป้าออกกำลังกายระดับปานกลาง (เช่น เดินเร็ว ปั่นจักรยาน) อย่างน้อย 150 นาทีต่อสัปดาห์ ตามคำแนะนำขององค์การอนามัยโลก'},
@@ -1851,8 +1825,6 @@ function renderResult(r){
     +'<div style="font-size:11px;color:#6b7280;margin-top:8px;">0=ไม่มี | 1-8=น้อย | 9-16=ปานกลาง | 17-46=รุนแรง</div></div>'
     +'</div></div>'
     +buildLifestyleAdviceHTML(r);
-  // แสดงผล Lab Module ถ้ามี PDF
-  // ════ ไฟล์ผลตรวจแนบ — แสดงให้ทุกคนเห็น (ผู้เข้ารับบริการดูได้เช่นเดียวกับแอดมิน) ════
   const attSection = document.getElementById('attached-file-section');
   const attContent = document.getElementById('attached-file-content');
   const hasImages = r.images && r.images.length;
@@ -1886,20 +1858,16 @@ function renderResult(r){
   const labContainer = document.getElementById('lab-result-container');
   const gender = r.gender === '1' ? 'M' : 'F';
   if(r.lab && window.LabModule){
-    // มีผลวิเคราะห์ที่บันทึกไว้แล้ว (ทำตอนแนบไฟล์) — แสดงจากข้อมูลนี้โดยตรง
-    // ไม่ต้องโหลด/อ่านไฟล์ซ้ำ จึงไม่มีปัญหาข้อมูลหายหรือไม่ตรงกับแดชบอร์ด/PDF ที่ดาวน์โหลด
     labSection.classList.remove('hidden');
     window.LabModule.renderFromData('lab-result-container', r.lab, gender, r.ncdAnalysis);
     window._labRenderPromise = null;
   } else if(hasImages && window.LabModule){
-    // กรณีเก่าที่ยังไม่มีผลวิเคราะห์บันทึกไว้ (หรือกำลังวิเคราะห์อยู่เบื้องหลัง) — อ่านไฟล์แบบสดๆ ไปก่อน
     labSection.classList.remove('hidden');
     labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
     window._labRenderPromise = window.LabModule.renderFromSources('lab-result-container', r.images.map(function(im){return im.data;}), gender, 'image');
   } else if(r.pdfData && window.LabModule){
     labSection.classList.remove('hidden');
     labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
-    // เก็บ Promise ไว้ให้ downloadResultPDF() รอจนวิเคราะห์เสร็จก่อนจับภาพ PDF
     window._labRenderPromise = window.LabModule.renderInto('lab-result-container', r.pdfData, gender, r.resultFileType||'pdf');
   } else {
     labSection.classList.add('hidden');
@@ -2144,7 +2112,6 @@ function clearPdfPreview(){
   document.getElementById('pdf-lab-preview').classList.add('hidden');
   document.getElementById('pdf-lab-preview-content').innerHTML='';
 }
-// แสดงตัวอย่างไฟล์/รูปที่เลือกไว้ทั้งหมด (รองรับหลายรูป เช่น ผลตรวจ 1-2 หน้า)
 function renderPendingPreview(){
   const pdfWrap=document.getElementById('pdf-preview-wrap');
   const imgWrap=document.getElementById('pdf-preview-images');
@@ -2192,16 +2159,13 @@ async function processPdfFiles(files){
   }
   for(const f of files){ await processPdfFile(f); }
 }
-// ย่อขนาดรูปภาพ (เช่น รูปถ่ายจากกล้องมือถือที่มักมีขนาดใหญ่มาก 3000-4000px)
-// ให้เหลือด้านยาวสุดไม่เกิน maxDim px ก่อนอัพโหลด/OCR — ช่วยให้ "อัพโหลด" และ "วิเคราะห์ผล" เร็วขึ้นมาก
-// โดยยังคมชัดพอสำหรับอ่านตัวเลขผลตรวจ
 function resizeImageDataUrl(dataUrl, maxDim, quality){
   maxDim = maxDim || 1600; quality = quality || 0.85;
   return new Promise(function(resolve){
     const img=new Image();
     img.onload=function(){
       let w=img.width, h=img.height;
-      if(w<=maxDim && h<=maxDim){ resolve(dataUrl); return; } // ไม่ต้องย่อถ้าเล็กอยู่แล้ว
+      if(w<=maxDim && h<=maxDim){ resolve(dataUrl); return; }
       const scale=maxDim/Math.max(w,h);
       w=Math.round(w*scale); h=Math.round(h*scale);
       const canvas=document.createElement('canvas');
@@ -2210,20 +2174,16 @@ function resizeImageDataUrl(dataUrl, maxDim, quality){
       ctx.drawImage(img,0,0,w,h);
       resolve(canvas.toDataURL('image/jpeg', quality));
     };
-    img.onerror=function(){ resolve(dataUrl); }; // ย่อไม่สำเร็จ ใช้ไฟล์เดิม
+    img.onerror=function(){ resolve(dataUrl); };
     img.src=dataUrl;
   });
 }
-// ครอบตัดภาพให้เหลือเฉพาะ "ส่วนเอกสาร" อัตโนมัติ — ใช้กรณีเจ้าหน้าที่แคปหน้าจอ (เช่น เปิด PDF ใน Google Drive)
-// แล้วแนบภาพทั้งหน้าจอมา ซึ่งจะติดแถบสถานะมือถือ/แถบเครื่องมือแอป/พื้นหลังสีเข้มมาด้วย
-// หลักการ: หาก้อนพิกเซล "โทนขาว" ที่เชื่อมต่อกันเป็นก้อนใหญ่ที่สุดในภาพ (คือหน้ากระดาษ A4 สีขาว)
-// แล้วครอบตัดเหลือเฉพาะกรอบสี่เหลี่ยมของก้อนนั้น ถ้าตรวจไม่พบชัดเจนจะคืนภาพเดิมโดยไม่ตัด (ปลอดภัยไว้ก่อน)
 function autoCropDocument(dataUrl){
   return new Promise(function(resolve){
     const img=new Image();
     img.onload=function(){
       try{
-        const AW=320; // ความกว้างที่ใช้วิเคราะห์ (ย่อลงเพื่อความเร็ว)
+        const AW=320;
         const scale=AW/img.width;
         const AH=Math.max(1,Math.round(img.height*scale));
         const c=document.createElement('canvas');
@@ -2238,11 +2198,9 @@ function autoCropDocument(dataUrl){
             const r=data[idx],g=data[idx+1],b=data[idx+2];
             const bright=(r+g+b)/3;
             const sat=Math.max(r,g,b)-Math.min(r,g,b);
-            // โทนขาว/เทาอ่อน (พื้นกระดาษ) = สว่างมาก และไม่ฉูดฉาด(สีไม่จัด)
             if(bright>195 && sat<45) whiteMask[y*AW+x]=1;
           }
         }
-        // หาก้อนพิกเซลขาวที่เชื่อมกัน (connected component) ที่ใหญ่ที่สุด ด้วย BFS
         const visited=new Uint8Array(AW*AH);
         let best={area:0,minX:0,minY:0,maxX:AW-1,maxY:AH-1};
         const qx=new Int32Array(AW*AH), qy=new Int32Array(AW*AH);
@@ -2274,12 +2232,10 @@ function autoCropDocument(dataUrl){
         }
         const totalPx=AW*AH;
         const boxW=best.maxX-best.minX+1, boxH=best.maxY-best.minY+1;
-        // ต้องเจอก้อนที่ใหญ่พอสมควร (ไม่ใช่จุดขาวเล็กๆ) และไม่ใช่ทั้งภาพอยู่แล้ว(ไม่จำเป็นต้องตัด)
         const coversWholeImage = best.minX<=1 && best.minY<=1 && best.maxX>=AW-2 && best.maxY>=AH-2;
         if(best.area < totalPx*0.12 || boxW<10 || boxH<10 || coversWholeImage){
-          resolve(dataUrl); return; // ตรวจไม่พบเอกสารเด่นชัด ใช้ภาพเดิม ไม่ตัด
+          resolve(dataUrl); return;
         }
-        // แปลงพิกัดกลับเป็นภาพจริง พร้อมเผื่อขอบเล็กน้อย
         const fx=img.width/AW, fy=img.height/AH;
         let cropX=Math.floor(best.minX*fx), cropY=Math.floor(best.minY*fy);
         let cropW=Math.ceil(boxW*fx), cropH=Math.ceil(boxH*fy);
@@ -2293,7 +2249,7 @@ function autoCropDocument(dataUrl){
         resolve(out.toDataURL('image/jpeg',0.92));
       }catch(e){
         console.error('autoCropDocument error:', e);
-        resolve(dataUrl); // ผิดพลาด ใช้ภาพเดิมไว้ก่อน ไม่เสี่ยงตัดพัง
+        resolve(dataUrl);
       }
     };
     img.onerror=function(){ resolve(dataUrl); };
@@ -2319,14 +2275,12 @@ async function processPdfFile(file){
     reader.readAsDataURL(file);
   });
   if(isPdf){
-    // โหมด PDF ใช้ได้ทีละไฟล์เท่านั้น (ไฟล์ PDF เป็นเอกสารหลายหน้าอยู่แล้วในตัว) — ล้างรูปภาพที่ค้างไว้ก่อนหน้า
     pendingImages=[];
     pendingPdfBase64=dataUrl; pendingPdfName=file.name; pendingPdfType='pdf';
     renderPendingPreview();
     previewLabCombined();
     return;
   }
-  // เป็นรูปภาพ — เพิ่มเข้ารายการที่แนบ (รองรับหลายรูป เช่น ผลตรวจ 1-2 หน้า)
   pendingPdfBase64=null; pendingPdfName=null; pendingPdfType='image';
   const cropped=await autoCropDocument(dataUrl);
   const resized=await resizeImageDataUrl(cropped,1600,0.85);
@@ -2334,7 +2288,6 @@ async function processPdfFile(file){
   renderPendingPreview();
   previewLabCombined();
 }
-// วิเคราะห์ตัวอย่างผลแล็บจากไฟล์/รูปที่แนบไว้ทั้งหมดรวมกัน (ใช้ตอนแนบไฟล์เท่านั้น)
 function previewLabCombined(){
   if(!window.LabModule) return;
   const r=records.find(function(x){return x.id===currentPdfModalId;});
@@ -2353,7 +2306,6 @@ function previewLabCombined(){
     .then(function(){ loadingEl.textContent='✅ วิเคราะห์สำเร็จ'; })
     .catch(function(){ loadingEl.textContent='⚠️ อ่านข้อมูลได้บางส่วน'; });
 }
-// แปลง dataURL -> Blob แบบ local ล้วนๆ (ไม่มีการเชื่อมต่อเครือข่าย จึงเร็วมาก ไม่ถึง 1 วินาที)
 function dataUrlToBlob(dataUrl){
   const arr=dataUrl.split(',');
   const mimeMatch=arr[0].match(/:(.*?);/);
@@ -2370,13 +2322,11 @@ function savePdf(){
   if(!hasPdf && !hasImages){ alert('กรุณาแนบไฟล์หรือถ่ายภาพผลตรวจ'); return; }
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
-  // เก็บสำเนาไว้ก่อน เพราะตัวแปร pending* จะถูกเคลียร์เมื่อปิด modal
   const stagedImages = hasImages ? pendingImages.slice() : [];
   const pdfBase64 = hasPdf ? pendingPdfBase64 : null;
   const pdfName = hasPdf ? pendingPdfName : (stagedImages.length+' รูปภาพ');
   const fileType = pendingPdfType;
 
-  // ═══ 1) อัปเดตหน้าจอ + ปิด modal ทันที (local preview ก่อน รออัพโหลดจริงเบื้องหลัง) ═══
   const localCleanupUrls=[];
   if(hasImages){
     r.images = stagedImages.map(function(im){
@@ -2399,7 +2349,6 @@ function savePdf(){
   closePdfModal();
   renderAdmin();
 
-  // ═══ 2) อัพโหลดไฟล์จริงขึ้น Storage แบบเบื้องหลัง (ไม่บล็อกผู้ใช้) ═══
   let uploadChain;
   if(hasImages){
     uploadChain = Promise.all(stagedImages.map(function(im,idx){
@@ -2431,7 +2380,6 @@ function savePdf(){
   uploadChain
     .then(function(){
       if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
-      // ═══ 3) วิเคราะห์ผล Lab (อ่าน PDF/OCR รูปภาพทั้งหมดรวมกัน) แบบเบื้องหลังต่อ — ไม่บล็อกผู้ใช้เช่นกัน ═══
       if(!window.LabModule) return;
       const srcs = hasImages ? r.images.map(function(im){return im.data;}) : [r.pdfData];
       return srcs.reduce(function(p,src){
@@ -2444,7 +2392,7 @@ function savePdf(){
           const lab = window.LabModule.extractLab(textAll, gender);
           r.lab = lab;
           const ncd = window.LabModule.analyzeNCD(lab, gender, r.age);
-          r.ncdAnalysis = ncd; // เก็บผลวิเคราะห์เต็มไว้ ใช้แสดงผลซ้ำได้โดยไม่ต้องอ่านไฟล์ใหม่
+          r.ncdAnalysis = ncd;
           const highest = ncd.reduce(function(acc,d){
             const order={high:3,medium:2,low:1};
             return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
@@ -2489,7 +2437,6 @@ async function removePdf(){
     alert('❌ ลบไฟล์ไม่สำเร็จ: '+e.message);
   }
 }
-// เปิดหน้าต่างใหม่แสดงไฟล์ผลตรวจที่แนบไว้ทั้งหมด (รองรับทั้งกรณีหลายรูปภาพ และไฟล์ PDF เดี่ยว)
 function openFileViewer(r){
   if(!r) return;
   const hasImages = r.images && r.images.length;
@@ -2518,8 +2465,7 @@ function exportSingleExcel(){
   if(!currentRecord)return;
   exportPomsat11([currentRecord]);
 }
-// ======= PDF EXPORT (ผลตรวจสุขภาพประจำปี) =======
-// แปลง URL ของไฟล์ (เช่น URL จาก Storage) เป็น dataURL — ใช้ฝังลง PDF ได้แน่นอน ไม่ขึ้นกับ CORS ของ <img>/canvas
+// ======= PDF EXPORT =======
 function urlToDataUrl(url){
   return new Promise(function(resolve,reject){
     if(url.startsWith('data:')||url.startsWith('blob:')){
@@ -2557,8 +2503,6 @@ function detectImageFormat(dataUrl){
   if(t==='webp') return 'WEBP';
   return 'JPEG';
 }
-// ดาวน์โหลดเฉพาะ "รูปภาพผลตรวจที่แนบไว้" เท่านั้น (ไม่รวมสรุปคะแนน/ผลวิเคราะห์)
-// รองรับหลายรูป (เช่น ผลตรวจ 1-2 หน้า) โดยแต่ละรูปจะเป็นคนละหน้าใน PDF
 async function downloadResultPDF(){
   if(!currentRecord){alert('ไม่พบข้อมูลผลตรวจ');return;}
   const r=currentRecord;
@@ -2568,7 +2512,6 @@ async function downloadResultPDF(){
   const origLabel=btn?btn.textContent:'';
   if(!imgList){
     if(r.resultFileType==='pdf' && r.pdfData){
-      // เป็นไฟล์ PDF อยู่แล้ว เปิดไฟล์ต้นฉบับให้แทนการสร้างใหม่
       window.open(r.pdfData,'_blank');
       return;
     }
@@ -2599,9 +2542,6 @@ async function downloadResultPDF(){
     if(btn){btn.disabled=false;btn.textContent=origLabel;}
   }
 }
-// สคริปต์ก้อนนี้อยู่ท้าย <body> แล้ว เมื่อรันถึงตรงนี้ DOM ถูก parse ครบแล้ว
-// จึงเรียกใช้งานได้ทันที ไม่ต้องรอ event 'load' (ซึ่งต้องรอทรัพยากรอื่นๆ เช่นฟอนต์/สคริปต์ CDN
-// โหลดเสร็จก่อน และถ้ามีตัวใดถูกบล็อกแบบเงียบๆ event นี้จะไม่มีวันเกิดขึ้นเลย)
 initDOBDropdowns('login-dob-day','login-dob-month','login-dob-year');
 </script>
 </body>
