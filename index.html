@@ -396,11 +396,8 @@
   </div>
   <div id="result-pdf-capture">
   <div id="result-content"></div>
- <div id="attached-file-section" class="hidden sc p-4 mb-4">
-    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e7eb;padding-bottom:6px;margin-bottom:10px;">
-      <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0;">📎 ไฟล์ผลตรวจแนบ</h3>
-      <button class="bs" style="font-size:12px;padding:5px 12px;" onclick="reAnalyzeCurrentResult()">🔄 วิเคราะห์ผลตรวจใหม่</button>
-    </div>
+  <div id="attached-file-section" class="hidden sc p-4 mb-4">
+    <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px;">📎 ไฟล์ผลตรวจแนบ</h3>
     <div id="attached-file-content"></div>
   </div>
   <div id="lab-module-section" class="hidden">
@@ -1923,34 +1920,6 @@ function showThankYouPage(r){
       +'<button class="bs" onclick="showPage(\'home\')">🏠 กลับหน้าหลัก</button>';
   }
   showPage('thankyou');
-}
-  // บังคับอ่านไฟล์ผลตรวจซ้ำ (กรณีข้อมูลเดิมค้างเป็นค่าว่างจากการอ่านที่ไม่สำเร็จก่อนหน้านี้)
-async function reAnalyzeCurrentResult(){
-  const r = currentRecord;
-  if(!r || !window.LabModule) return;
-  const hasImages = r.images && r.images.length;
-  if(!hasImages && !r.pdfData){ alert('ไม่พบไฟล์ผลตรวจให้วิเคราะห์'); return; }
-  const labContainer = document.getElementById('lab-result-container');
-  document.getElementById('lab-module-section').classList.remove('hidden');
-  labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือดใหม่...</div>';
-  const gender = r.gender==='1' ? 'M' : 'F';
-  try{
-    const srcs = hasImages ? r.images.map(function(im){return im.data;}) : [r.pdfData];
-    const fileType = hasImages ? 'image' : (r.resultFileType||'pdf');
-    const result = await window.LabModule.renderFromSources('lab-result-container', srcs, gender, fileType);
-    r.lab = result.lab;
-    r.ncdAnalysis = result.ncd;
-    const highest = result.ncd.diseases.reduce(function(acc,d){
-      const order={high:3,medium:2,low:1};
-      return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
-    }, 'low');
-    r.ncdRisk = highest;
-    await updateRecordInSupabase(r);
-    alert('✅ วิเคราะห์ผลตรวจใหม่สำเร็จแล้ว');
-  }catch(e){
-    console.error('reAnalyzeCurrentResult error:', e);
-    alert('❌ วิเคราะห์ไม่สำเร็จ: '+e.message);
-  }
 }
 function renderResult(r){
   document.getElementById('result-name-hd').textContent=r.prefix+' '+r.fname+' '+r.lname+' | '+r.unit+' | บันทึกเมื่อ: '+r.savedAt;
