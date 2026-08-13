@@ -410,6 +410,10 @@
   </div>
   </div>
 </div>
+<!-- THANK YOU (แสดงหลังกดรับทราบผลตรวจ) -->
+<div id="page-thankyou" class="hidden" style="max-width:600px;margin:0 auto;">
+  <div class="sc p-8" id="thankyou-content" style="text-align:center;"></div>
+</div>
 <!-- SUCCESS -->
 <div id="page-success" class="hidden" style="max-width:480px;margin:0 auto;">
   <div class="sc p-8" style="text-align:center;">
@@ -474,6 +478,8 @@
           <th style="padding:10px 10px;text-align:center;font-size:13px;">กลุ่มสี</th>
           <th style="padding:10px 10px;text-align:center;font-size:13px;">ผลตรวจแนบ</th>
           <th style="padding:10px 10px;text-align:center;font-size:13px;">สถานะนัดหมาย</th>
+          <th style="padding:10px 10px;text-align:center;font-size:13px;">คำตอบผู้รับบริการ</th>
+          <th style="padding:10px 10px;text-align:center;font-size:13px;">รับทราบผล</th>
           <th style="padding:10px 10px;text-align:center;font-size:13px;">จัดการ</th>
         </tr>
       </thead>
@@ -1342,9 +1348,16 @@ function dobToDisplay(val){
   if(parts.length<3) return val;
   return parseInt(parts[2])+' '+MONTHS_TH[parseInt(parts[1])-1]+' '+parts[0];
 }
+  function ceDateToBEDisplay(val){
+  if(!val) return '-';
+  const parts = val.split('-');
+  if(parts.length<3) return val;
+  const beYear = parseInt(parts[0]) + 543;
+  return parseInt(parts[2])+' '+MONTHS_TH[parseInt(parts[1])-1]+' '+beYear;
+}
 // ======= NAV =======
 function showPage(p){
-  ['home','register','login','result','success','admin','manage-admins'].forEach(function(x){
+  ['home','register','login','result','success','admin','manage-admins','thankyou'].forEach(function(x){
     document.getElementById('page-'+x).classList.add('hidden');
   });
   document.getElementById('page-'+p).classList.remove('hidden');
@@ -1754,7 +1767,160 @@ function buildLifestyleAdviceHTML(r){
     +cardsHTML
     +'</div>';
 }
-
+// ======= แสดงสถานะนัดหมายให้ผู้รับบริการเห็น =======
+function buildAppointmentHTML(r){
+  const appt = r.appointment;
+  const hasAppt = appt && appt.type === 'appt' && appt.date;
+  if(hasAppt){
+    const attendedBadge = appt.attended
+      ? '<span style="background:rgba(255,255,255,.9);color:#166534;padding:5px 14px;border-radius:20px;font-weight:800;font-size:13px;">✅ มาตามนัดแล้ว</span>'
+      : '<span style="background:rgba(255,255,255,.9);color:#92400e;padding:5px 14px;border-radius:20px;font-weight:800;font-size:13px;">⏳ ยังไม่มาตามนัด</span>';
+    return '<div class="sc p-4 mb-4" style="background:linear-gradient(135deg,#b7202b,#7f1621);border:3px solid #f0d896;box-shadow:0 4px 14px rgba(183,32,43,.35);">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+      +'<div style="display:flex;align-items:center;gap:14px;">'
+      +'<span style="font-size:36px;">📅</span>'
+      +'<div>'
+      +'<div style="font-size:12px;font-weight:700;color:#fde68a;letter-spacing:.5px;">⚠️ ท่านมีนัดหมาย</div>'
+      +'<div style="font-size:19px;font-weight:800;color:#ffffff;margin-top:2px;">วันที่ '+ceDateToBEDisplay(appt.date)+'</div>'
+      +(appt.note?'<div style="font-size:13px;color:#fde68a;margin-top:4px;">📌 '+appt.note+'</div>':'')
+      +'</div></div>'
+      +attendedBadge
+      +'</div></div>';
+  } else {
+    return '<div class="sc p-4 mb-4" style="background:#f3f4f6;">'
+      +'<div style="display:flex;align-items:center;gap:10px;">'
+      +'<span style="font-size:24px;">📅</span>'
+      +'<div style="font-size:14px;font-weight:700;color:#6b7280;">ไม่มีนัดหมาย</div>'
+      +'</div></div>';
+  }
+}
+// ======= ผู้รับบริการตอบกลับเรื่องนัดหมาย =======
+function buildAppointmentResponseHTML(r){
+  const appt = r.appointment;
+  const hasAppt = appt && appt.type === 'appt' && appt.date;
+  if(!hasAppt) return '';
+  const resp = r.patientResponse;
+  if(resp){
+    const actionTxt = resp.action==='confirm'
+      ? '✅ ท่านแจ้งว่าสะดวกมาตามนัด'
+      : '🔄 ท่านขอเลื่อนนัดหมาย เป็นวันที่ '+ceDateToBEDisplay(resp.requestedDate);
+    return '<div class="sc p-4 mb-4" style="background:#f0fdf4;border-color:#bbf7d0;">'
+      +'<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:4px;">'+actionTxt+'</div>'
+      +'<div style="font-size:11px;color:#6b7280;">ตอบกลับเมื่อ: '+new Date(resp.respondedAt).toLocaleString('th-TH')+'</div>'
+      +'<button class="bs" style="margin-top:10px;font-size:12px;padding:6px 14px;" onclick="showApptResponseForm(true)">แก้ไขคำตอบ</button>'
+      +'<div id="appt-response-form" class="hidden" style="margin-top:12px;"></div>'
+      +'</div>';
+  }
+  return '<div class="sc p-4 mb-4" style="border-color:#f0d896;">'
+    +'<h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 10px;">📌 กรุณาแจ้งให้ทราบเกี่ยวกับนัดหมาย</h3>'
+    +'<div id="appt-response-form">'+apptResponseFormHTML()+'</div>'
+    +'</div>';
+}
+function apptResponseFormHTML(){
+  return '<div class="rg" style="margin-bottom:12px;">'
+    +'<label class="rb"><input type="radio" name="appt-resp-action" value="confirm" onchange="toggleApptRespDate()"> ✅ สะดวกมาตามนัด</label>'
+    +'<label class="rb"><input type="radio" name="appt-resp-action" value="reschedule" onchange="toggleApptRespDate()"> 🔄 ขอเลื่อนนัดหมาย</label>'
+    +'</div>'
+    +'<div id="appt-resp-date-wrap" class="hidden" style="margin-bottom:12px;">'
+    +'<label class="fl">ต้องการเลื่อนไปวันที่</label>'
+    +'<input type="date" id="appt-resp-date" class="fi">'
+    +'</div>'
+    +'<div id="appt-resp-err" class="hidden" style="background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;"></div>'
+    +'<button class="bp" style="font-size:13px;padding:8px 18px;" onclick="submitApptResponse()">ส่งคำตอบ</button>';
+}
+function showApptResponseForm(edit){
+  const wrap = document.getElementById('appt-response-form');
+  if(wrap){ wrap.innerHTML = apptResponseFormHTML(); wrap.classList.remove('hidden'); }
+}
+function toggleApptRespDate(){
+  const val = document.querySelector('input[name="appt-resp-action"]:checked');
+  document.getElementById('appt-resp-date-wrap').classList.toggle('hidden', !val || val.value!=='reschedule');
+}
+async function submitApptResponse(){
+  const val = document.querySelector('input[name="appt-resp-action"]:checked');
+  const errEl = document.getElementById('appt-resp-err');
+  if(!val){ errEl.textContent='กรุณาเลือกคำตอบ'; errEl.classList.remove('hidden'); return; }
+  let newDate = null;
+  if(val.value==='reschedule'){
+    newDate = document.getElementById('appt-resp-date').value;
+    if(!newDate){ errEl.textContent='กรุณาเลือกวันที่ต้องการเลื่อน'; errEl.classList.remove('hidden'); return; }
+  }
+  errEl.classList.add('hidden');
+  try{
+    const { data, error } = await window._sb.rpc('submit_appointment_response', {
+      p_idcard: currentRecord.idcard, p_dob: currentRecord.dob,
+      p_action: val.value, p_new_date: newDate
+    });
+    if(error) throw error;
+    if(data && data.length){
+      currentRecord = data[data.length-1];
+      renderResult(currentRecord);
+      alert('✅ บันทึกคำตอบเรียบร้อยแล้ว');
+    }
+  }catch(e){
+    console.error('submitApptResponse error:', e);
+    errEl.textContent='บันทึกไม่สำเร็จ: '+e.message; errEl.classList.remove('hidden');
+  }
+}
+// ======= ปุ่มรับทราบผลการตรวจสุขภาพ =======
+function buildAcknowledgeHTML(r){
+  if(r.acknowledged){
+    return '<div class="sc p-4 mb-4" style="background:#f0fdf4;border-color:#bbf7d0;text-align:center;">'
+      +'<div style="font-size:13px;font-weight:700;color:#166534;">✅ ท่านได้รับทราบผลการตรวจสุขภาพประจำปี 69 แล้ว</div>'
+      +'<div style="font-size:11px;color:#6b7280;margin-top:4px;">เมื่อ: '+new Date(r.acknowledgedAt).toLocaleString('th-TH')+'</div>'
+      +'</div>';
+  }
+return '<div class="sc p-4 mb-4" style="text-align:center;">'
+    +'<p style="font-size:13px;color:#374151;margin:0 0 8px;">กรุณากดปุ่มด้านล่างเพื่อยืนยันว่าท่านได้รับทราบผลการตรวจสุขภาพประจำปี 2569 แล้ว</p>'
+    +'<button class="bg" onclick="acknowledgeResult()">✅ รับทราบผลการตรวจสุขภาพประจำปี 69</button>'
+    +'<p style="font-size:12px;color:#9ca3af;margin:12px 0 0;">หมายเหตุ: สามารถดาวน์โหลดผลการตรวจสุขภาพ เพื่อนำไปใช้ประกอบการดำเนินการทางธุรการได้</p>'
+    +'</div>';
+}
+async function acknowledgeResult(){
+  try{
+    const { data, error } = await window._sb.rpc('acknowledge_health_result', {
+      p_idcard: currentRecord.idcard, p_dob: currentRecord.dob
+    });
+    if(error) throw error;
+    if(data && data.length){
+      currentRecord = data[data.length-1];
+      showThankYouPage(currentRecord);
+    }
+  }catch(e){
+    console.error('acknowledgeResult error:', e);
+    alert('❌ บันทึกการรับทราบไม่สำเร็จ: '+e.message);
+  }
+}
+// ======= หน้าถัดไปหลังกดรับทราบผลตรวจ =======
+function showThankYouPage(r){
+  const el = document.getElementById('thankyou-content');
+  const appt = r.appointment;
+  const hasAppt = appt && appt.type === 'appt' && appt.date;
+  if(hasAppt){
+    el.innerHTML =
+      '<div style="width:64px;height:64px;background:#fdf3e0;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">'
+      +'<span style="font-size:32px;">📅</span></div>'
+      +'<h2 style="font-size:20px;font-weight:700;color:#7f1621;margin:0 0 8px;">ท่านมีนัดหมาย</h2>'
+      +'<div style="background:#fdf3e0;border:1px solid #f0d896;border-radius:10px;padding:18px;margin:16px 0;text-align:left;">'
+      +'<div style="font-size:15px;font-weight:700;color:#7f1621;margin-bottom:6px;">📅 วันที่นัดหมาย: '+ceDateToBEDisplay(appt.date)+'</div>'
+      +(appt.note?'<div style="font-size:13px;color:#374151;margin-top:6px;"><b>รายละเอียด:</b> '+appt.note+'</div>':'')
+      +'</div>'
+      +'<div style="background:#fee2e2;border:1px solid #fecaca;border-radius:10px;padding:14px;margin-bottom:16px;text-align:left;">'
+      +'<p style="font-size:13px;color:#991b1b;margin:0;line-height:1.6;">📌 หมายเหตุ: กรุณาบันทึกภาพหน้าจอใบนัดหมาย และนำมาแสดง ณ จุดคัดกรองก่อนเข้าพบแพทย์ หากต้องการดูผลตรวจสุขภาพประจำปีอีกครั้ง หรือเลื่อนนัด รบกวนเข้าระบบอีกครั้งค่ะ</p>'
+      +'</div>'
+      +'<button class="bs" onclick="showPage(\'home\')">🏠 กลับหน้าหลัก</button>';
+  } else {
+    el.innerHTML =
+      '<div style="width:64px;height:64px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">'
+      +'<svg width="34" height="34" fill="none" stroke="#16a34a" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>'
+      +'<h2 style="font-size:20px;font-weight:700;color:#166534;margin:0 0 8px;">ขอบคุณที่ใช้บริการ</h2>'
+      +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin:16px 0;">'
+      +'<p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">📌 หมายเหตุ: หากต้องการดูข้อมูลอีกครั้งให้เข้าสู่ระบบอีกครั้งค่ะ</p>'
+      +'</div>'
+      +'<button class="bs" onclick="showPage(\'home\')">🏠 กลับหน้าหลัก</button>';
+  }
+  showPage('thankyou');
+}
 function renderResult(r){
   document.getElementById('result-name-hd').textContent=r.prefix+' '+r.fname+' '+r.lname+' | '+r.unit+' | บันทึกเมื่อ: '+r.savedAt;
   const bmi=parseFloat(r.bmi);
@@ -1824,7 +1990,10 @@ function renderResult(r){
     +'<span class="rt '+q8Tag+'" style="margin-top:8px;display:inline-block;">'+q8Txt+'</span>'
     +'<div style="font-size:11px;color:#6b7280;margin-top:8px;">0=ไม่มี | 1-8=น้อย | 9-16=ปานกลาง | 17-46=รุนแรง</div></div>'
     +'</div></div>'
-    +buildLifestyleAdviceHTML(r);
+    +buildAppointmentHTML(r)
+    +buildAppointmentResponseHTML(r)
+    +buildLifestyleAdviceHTML(r)
+    +buildAcknowledgeHTML(r);
   const attSection = document.getElementById('attached-file-section');
   const attContent = document.getElementById('attached-file-content');
   const hasImages = r.images && r.images.length;
@@ -1966,7 +2135,7 @@ function renderAdmin(){
       +'<div style="font-size:22px;font-weight:800;color:'+x[4]+';">'+x[2]+'</div></div>';
   }).join('');
   const tbody=document.getElementById('admin-tbody');
-  if(!records.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:#9ca3af;">ยังไม่มีข้อมูล</td></tr>';return;}
+if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:#9ca3af;">ยังไม่มีข้อมูล</td></tr>';return;}
   tbody.innerHTML=records.map(function(r,i){
     const q9=parseInt(r.q9),q8=parseInt(r.q8);
     const q9tag=q9<=6?'tn':q9<=12?'tw':'ta';
@@ -2000,7 +2169,15 @@ function renderAdmin(){
       +'<td style="padding:8px 10px;font-size:13px;text-align:center;"><span class="rt '+q8tag+'">'+r.q8+'</span></td>'
       +'<td style="padding:8px 10px;font-size:13px;text-align:center;">'+({green:'🟢',yellow:'🟡',red:'🔴'}[r.colorGroup]||'')+'</td>'
       +'<td style="padding:8px 10px;text-align:center;">'+pdfBadge+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;"><button onclick="openAppt(\''+r.id+'\')" title="แก้ไขสถานะนัดหมาย" style="background:none;border:none;cursor:pointer;padding:2px;">'+apptStatusBadge+'</button></td>'
++'<td style="padding:8px 10px;text-align:center;"><button onclick="openAppt(\''+r.id+'\')" title="แก้ไขสถานะนัดหมาย" style="background:none;border:none;cursor:pointer;padding:2px;">'+apptStatusBadge+'</button></td>'
+      +'<td style="padding:8px 10px;text-align:center;font-size:11px;">'+(function(){
+          const resp=r.patientResponse;
+          if(!resp) return '<span style="color:#9ca3af;">ยังไม่ตอบ</span>';
+          return resp.action==='confirm'
+            ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-weight:700;">✅ สะดวกมา</span>'
+            : '<span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-weight:700;">🔄 ขอเลื่อน<br>'+resp.requestedDate+'</span>';
+        })()+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-size:11px;">'+(r.acknowledged?'<span style="color:#16a34a;font-weight:700;">✅ รับทราบแล้ว</span>':'<span style="color:#9ca3af;">ยังไม่รับทราบ</span>')+'</td>'
       +'<td style="padding:8px 10px;text-align:center;"><button onclick="deleteRecord(\''+r.id+'\')" title="ลบข้อมูล (สำหรับรายการลงทะเบียนซ้ำ)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🗑️</button></td>'
       +'</tr>';
   }).join('');
@@ -2393,7 +2570,7 @@ function savePdf(){
           r.lab = lab;
           const ncd = window.LabModule.analyzeNCD(lab, gender, r.age);
           r.ncdAnalysis = ncd;
-          const highest = ncd.reduce(function(acc,d){
+          const highest = ncd.diseases.reduce(function(acc,d){
             const order={high:3,medium:2,low:1};
             return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
           }, 'low');
