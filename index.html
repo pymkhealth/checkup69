@@ -714,22 +714,28 @@
     const am=text.match(/อายุ\s*:\s*(\d+)\s*ป/);d.age=am?parseInt(am[1]):null;
     const dm=text.match(/(\d+\s+(?:มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s+\d{4})/);
     d.date=dm?dm[1]:null;
-    d.hb=n(text,/Hb\s+([\d.]+)/);d.hct=n(text,/Hct\s+([\d.]+)/);
-    d.rbc=n(text,/RBC count\s+([\d.]+)/);d.mcv=n(text,/MCV\s+([\d.]+)/);
-    d.mch=n(text,/MCH\s+([\d.]+)/);d.mchc=n(text,/MCHC\s+([\d.]+)/);
-    d.plt=n(text,/Platelet Count\s+([\d.]+)/);d.wbc=n(text,/WBC count\s+([\d.]+)/);
-    d.neu=n(text,/Neutrophil\s+([\d.]+)/);d.lym=n(text,/Lymphocyte\s+([\d.]+)/);
-    d.eos=n(text,/Eosinophil\s+([\d.]+)/);d.mono=n(text,/Monocyte\s+([\d.]+)/);
-    d.chol=n(text,/Cholesterol\s+([\d.]+)/);d.tg=n(text,/Triglyceride\s+([\d.]+)/);
-    d.fbs=n(text,/Glucose\(FBS\)\s+([\d.]+)/)||n(text,/Glucose\s+([\d.]+)/);
-    d.uric=n(text,/Uric acid\.\.\s+([\d.]+)/);
-    d.bun=n(text,/BUN[^\d]*([\d.]+)/);d.creat=n(text,/Creatinine[^\d]*([\d.]+)/);
-    d.egfr=n(text,/eGFR[^\d]*([\d.]+)/);
-    d.alt=n(text,/SGPT\(ALT\)[^\d]*([\d.]+)/);d.ast=n(text,/SGOT\(AST\)[^\d]*([\d.]+)/);d.alp=n(text,/ALP[^\d]*([\d.]+)/);
-    d.hdl=n(text,/HDL-?C?\s*[^\d]*([\d.]+)/);d.ldl=n(text,/LDL-?C?\s*[^\d]*([\d.]+)/);
-    d.urineBlood=/3\+\s*Blood|2\+\s*Blood|1\+\s*Blood/.test(text);
-    d.urineProtein=!/Negative Protein/.test(text)&&/Protein/.test(text);
-    d.urineGlucose=!/Glucose Negative/.test(text)&&/Glucose/.test(text);
+d.hb=n(text,/Hb\s+([\d.]+)/i);d.hct=n(text,/Hct\s+([\d.]+)/i);
+d.rbc=n(text,/RBC\s*Count\s+([\d.]+)/i);d.mcv=n(text,/MCV\s+([\d.]+)/i);
+d.mch=n(text,/MCH\s+([\d.]+)/i);d.mchc=n(text,/MCHC\s+([\d.]+)/i);
+d.plt=n(text,/Platelets?\s*Count\s+([\d.]+)/i);d.wbc=n(text,/WBC\s*Count\s+([\d.]+)/i);
+d.neu=n(text,/Neutrophil\s+([\d.]+)/i);d.lym=n(text,/Lymphocyte\s+([\d.]+)/i);
+d.eos=n(text,/Eosinophil\s+([\d.]+)/i);d.mono=n(text,/Monocyte\s+([\d.]+)/i);
+d.chol=n(text,/Cholesterol\s+([\d.]+)/i);d.tg=n(text,/Triglyceride[s]?\s+([\d.]+)/i);
+d.fbs=n(text,/Glucose\(FBS\)\s+([\d.]+)/i)||n(text,/Glucose\s+([\d.]+)/i);
+d.uric=n(text,/Uric(?:\s*acid)?\.{0,2}\s+([\d.]+)/i);
+d.bun=n(text,/BUN[^\d]*([\d.]+)/i);d.creat=n(text,/Creatinine[^\d]*([\d.]+)/i);
+d.egfr=n(text,/eGFR[^\d]*([\d.]+)/i);
+d.alt=n(text,/(?:SGPT\(ALT\)|ALT)[^\d]*([\d.]+)/i);
+d.ast=n(text,/(?:SGOT\(AST\)|AST)[^\d]*([\d.]+)/i);
+d.alp=n(text,/ALP[^\d]*([\d.]+)/i);
+d.hdl=n(text,/HDL-?C?\s*[^\d]*([\d.]+)/i);d.ldl=n(text,/LDL-?C?\s*[^\d]*([\d.]+)/i);
+    function urineFlag(text, label){
+  const m = text.match(new RegExp(label + '\\s*[:\\-]?\\s*(Negative|Trace|[123]\\+|[A-Za-z]+)', 'i'));
+  return m ? !/negative/i.test(m[1]) : false;
+}
+d.urineBlood   = /Blood[^A-Za-z0-9]{0,10}[123]\+/i.test(text) || /[123]\+[^A-Za-z0-9]{0,10}Blood/i.test(text);
+d.urineProtein = urineFlag(text, 'Protein');
+d.urineGlucose = urineFlag(text, 'Glucose');
     d.urineRBC=n(text,/(\d+)-\d+\s+RBC\s+0\s*-\s*2/);
     d.urinePeriod=/มีประจำเดือน|มีประจําเดือน/.test(text);
     const hctRefLo=f?36:40;
@@ -939,6 +945,8 @@
       el.innerHTML=buildHTML(lab,gender,ncd);
     }catch(e){
       el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
+      const known = { name: (r.prefix+' '+r.fname+' '+r.lname).trim(), age: r.age };
+window.LabModule.renderFromSources('lab-result-container', srcs, gender, fileType, known);
     }
   }
   async function renderFromFile(file,containerId,gender){
@@ -953,6 +961,15 @@
       for(const src of srcs){ text += (await sourceToText(src,fileType)) + '\n'; }
       let g=gender;
       if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
+      const known = { name: (r.prefix+' '+r.fname+' '+r.lname).trim(), age: r.age };
+window.LabModule.renderFromSources('lab-result-container', srcs, gender, fileType, known);
+function extractLab(text,gender,known){
+  const f=gender==='F';
+  const d={};
+  const nm=text.match(/ชื่อ\s*:\s*([^\n\r]+)/)||text.match(/((?:ร|พ)\.[อต]\.(?:หญิง|ชาย)\s+\S+\s+\S+|นาย\s+\S+\s+\S+|นาง(?:สาว)?\s+\S+\s+\S+)/);
+  d.name = nm ? nm[1].trim() : (known && known.name) || null;
+  const am=text.match(/อายุ\s*:\s*(\d+)\s*ป/);
+  d.age = am ? parseInt(am[1]) : (known && known.age) || null;
       const lab=extractLab(text,g);
       if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
       const ncd=analyzeNCD(lab,gender,lab.age);
