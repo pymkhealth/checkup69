@@ -931,55 +931,40 @@ d.urineGlucose = urineFlag(text, 'Glucose');
       <p class="lm-dis">ผลการวิเคราะห์นี้ใช้เพื่อการคัดกรองเบื้องต้นเท่านั้น ไม่ใช่การวินิจฉัยโรค กรุณาปรึกษาแพทย์</p>
     </div>`;
   }
-  async function renderInto(containerId,src,gender,fileType){
-    const el=document.getElementById(containerId);
-    if(!el)return;
-    el.innerHTML='<p style="color:#888;font-size:14px;padding:1rem;text-align:center">⏳ '+(fileType==='image'?'กำลังอ่านภาพ (OCR)...':'กำลังอ่านผลตรวจ...')+'</p>';
-    try{
-      const text=await sourceToText(src,fileType);
-      let g=gender;
-      if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
-      const lab=extractLab(text,g);
-      if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
-      const ncd=analyzeNCD(lab,gender,lab.age);
-      el.innerHTML=buildHTML(lab,gender,ncd);
-    }catch(e){
-      el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
-      const known = { name: (r.prefix+' '+r.fname+' '+r.lname).trim(), age: r.age };
-window.LabModule.renderFromSources('lab-result-container', srcs, gender, fileType, known);
-    }
+async function renderInto(containerId,src,gender,fileType,known){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML='<p style="color:#888;font-size:14px;padding:1rem;text-align:center">⏳ '+(fileType==='image'?'กำลังอ่านภาพ (OCR)...':'กำลังอ่านผลตรวจ...')+'</p>';
+  try{
+    const text=await sourceToText(src,fileType);
+    let g=gender;
+    if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
+    const lab=extractLab(text,g,known);
+    if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
+    const ncd=analyzeNCD(lab,gender,lab.age);
+    el.innerHTML=buildHTML(lab,gender,ncd);
+  }catch(e){
+    el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
   }
+}
   async function renderFromFile(file,containerId,gender){
     return renderInto(containerId,await file.arrayBuffer(),gender);
   }
-  async function renderFromSources(containerId,srcs,gender,fileType){
-    const el=document.getElementById(containerId);
-    if(!el)return;
-    el.innerHTML='<p style="color:#888;font-size:14px;padding:1rem;text-align:center">⏳ '+(fileType==='image'?'กำลังอ่านภาพ (OCR)...':'กำลังอ่านผลตรวจ...')+'</p>';
-    try{
-      let text='';
-      for(const src of srcs){ text += (await sourceToText(src,fileType)) + '\n'; }
-      let g=gender;
-      if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
-      const known = { name: (r.prefix+' '+r.fname+' '+r.lname).trim(), age: r.age };
-window.LabModule.renderFromSources('lab-result-container', srcs, gender, fileType, known);
-function extractLab(text,gender,known){
+ async function renderFromSources(containerId,srcs,gender,fileType,known){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML='<p style="color:#888;font-size:14px;padding:1rem;text-align:center">⏳ '+(fileType==='image'?'กำลังอ่านภาพ (OCR)...':'กำลังอ่านผลตรวจ...')+'</p>';
+  try{
+    let text='';
+    for(const src of srcs){ text += (await sourceToText(src,fileType)) + '\n'; }
+    let g=gender;
+    if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
+   function extractLab(text,gender,known){
   const f=gender==='F';
   const d={};
   const nm=text.match(/ชื่อ\s*:\s*([^\n\r]+)/)||text.match(/((?:ร|พ)\.[อต]\.(?:หญิง|ชาย)\s+\S+\s+\S+|นาย\s+\S+\s+\S+|นาง(?:สาว)?\s+\S+\s+\S+)/);
-  d.name = nm ? nm[1].trim() : (known && known.name) || null;
-  const am=text.match(/อายุ\s*:\s*(\d+)\s*ป/);
-  d.age = am ? parseInt(am[1]) : (known && known.age) || null;
-      const lab=extractLab(text,g);
-      if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
-      const ncd=analyzeNCD(lab,gender,lab.age);
-      el.innerHTML=buildHTML(lab,gender,ncd);
-      return {lab,ncd};
-    }catch(e){
-      el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
-      throw e;
-    }
-  }
+  d.name=nm?nm[1].trim():(known&&known.name)||null;
+  const am=text.match(/อายุ\s*:\s*(\d+)\s*ป/);d.age=am?parseInt(am[1]):(known&&known.age)||null;
   function renderFromData(containerId,lab,gender,ncd){
     const el=document.getElementById(containerId);
     if(!el)return;
