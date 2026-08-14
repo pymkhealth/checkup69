@@ -781,10 +781,17 @@
     });
   }
   async function imageToText(src){
-    const Tesseract=await loadTesseract();
-    const result=await Tesseract.recognize(src,'eng+tha');
-    return (result&&result.data&&result.data.text)||'';
-  }
+  const Tesseract=await loadTesseract();
+  // อ่าน 2 รอบแยกภาษา แล้วรวมผลลัพธ์ เพื่อลดปัญหาตัวอักษรปนภาษากัน
+  const [engResult, thaResult] = await Promise.all([
+    Tesseract.recognize(src, 'eng'),
+    Tesseract.recognize(src, 'tha')
+  ]);
+  const engText = (engResult && engResult.data && engResult.data.text) || '';
+  const thaText = (thaResult && thaResult.data && thaResult.data.text) || '';
+  // ต่อข้อความทั้งสองภาษาเข้าด้วยกัน ให้ extractLab ลองจับคู่จากทั้งสองฝั่ง
+  return engText + '\n' + thaText;
+}
   async function sourceToText(src,fileType){
     return fileType==='image' ? imageToText(src) : pdfToText(src);
   }
@@ -792,7 +799,7 @@
   // แปลงหน้า PDF หนึ่งหน้าให้เป็นรูปภาพ (dataURL) โดยใช้ pdf.js render ลง canvas
   // ใช้เมื่อ PDF เป็นไฟล์สแกน/ถ่ายภาพที่ไม่มีเลเยอร์ข้อความฝังอยู่
   async function pdfPageToImage(page, scale){
-    scale = scale || 2; // ยิ่งสูงยิ่งคมชัด แต่ช้าลง — 2 พอดีสำหรับ OCR
+    scale = scale || 3; // เพิ่มจาก 2 เป็น 3 เพื่อความคมชัดขึ้น
     const viewport = page.getViewport({ scale: scale });
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width;
