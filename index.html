@@ -649,7 +649,9 @@
 <div id="modal-pdf" class="hidden modal-overlay">
   <div class="sc p-6" style="width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;">
     <h3 style="font-size:16px;font-weight:700;color:#1e293b;margin:0 0 4px;">📎 แนบผลตรวจสุขภาพประจำปี</h3>
-    <p id="pdf-person-name" style="font-size:13px;color:#64748b;margin:0 0 18px;"></p>
+    <p id="pdf-person-name" style="font-size:13px;color:#64748b;margin:0 0 8px;"></p>
+    <div id="pdf-person-identity" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12px;color:#475569;"></div>
+    <div id="pdf-identity-check" class="hidden" style="border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.6;"></div>
     <div id="pdf-current-wrap" class="hidden" style="margin-bottom:14px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:20px;" id="pdf-current-icon">📄</span>
@@ -2943,10 +2945,10 @@ if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:cent
       pdfBadge='<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fef9c3;color:#92400e;border:1.5px dashed #fcd34d;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;">📎 แนบผลตรวจ</button>';
     } else if(r._uploading || r.labStatus==='processing'){
       pdfBadge='<span style="display:inline-block;background:#fef9c3;color:#92400e;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;">⏳ กำลังอ่านผล</span>'
-        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+        +'<button onclick="replaceResultFile(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="เปลี่ยนไฟล์ผลตรวจ">🔄</button>';
     } else if(r.labStatus==='pending_review'){
       pdfBadge='<button onclick="openLabReview(\''+r.id+'\')" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">⚠️ ตรวจสอบ OCR</button>'
-        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+        +'<button onclick="replaceResultFile(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="เปลี่ยนไฟล์ผลตรวจ">🔄</button>';
     } else if(r.labStatus==='ocr_error'){
       pdfBadge='<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="กดเพื่อแนบไฟล์เดิมและลองอ่านใหม่">⚠️ OCR ไม่สำเร็จ — ลองใหม่</button>';
     } else if(r.labStatus==='verified'){
@@ -2954,7 +2956,7 @@ if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:cent
         +'<button onclick="openLabReview(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="ตรวจ/แก้ไขผลอีกครั้ง">✎</button>';
     } else {
       pdfBadge='<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🔬 Lab</button>'
-        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+        +'<button onclick="replaceResultFile(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="เปลี่ยนไฟล์ผลตรวจ">🔄</button>';
     }
     const appt=r.appointment;
     const hasAppt=appt&&appt.type==='appt'&&appt.date;
@@ -3063,6 +3065,7 @@ function toggleAttended(id){
 // ======= PDF MODAL =======
 let currentPdfModalId = null;
 let pendingImages = [];
+let pendingIdentityCheck = null;
 let pendingPdfBase64 = null;
 let pendingPdfName = null;
 let pendingPdfType = null;
@@ -3228,12 +3231,110 @@ if(!r.labDraft){
 
   currentLabReviewId = null;
 }
+
+function normalizeThaiNameForCompare(s){
+  return String(s||'')
+    .toLowerCase()
+    .replace(/(?:ร|พ)\.[อต]\.(?:หญิง|ชาย)/g,'')
+    .replace(/^(นาย|นางสาว|นาง)\s*/,'')
+    .replace(/[^\u0E00-\u0E7Fa-z0-9]/g,'')
+    .trim();
+}
+
+function escapeSimple(value){
+  return String(value===null||value===undefined?'':value)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function extractIdentityFromOcrText(text){
+  const out={name:null,hn:null};
+  const t=String(text||'');
+  const hnMatch=t.match(/\bHN\s*[:#]?\s*([A-Za-z0-9\-]{3,20})/i)
+    || t.match(/เลขที่ผู้ป่วย\s*[:#]?\s*([A-Za-z0-9\-]{3,20})/i);
+  if(hnMatch) out.hn=hnMatch[1].trim();
+
+  const nameMatch=t.match(/ชื่อ\s*[:：]?\s*([^\n\r]{3,80})/i)
+    || t.match(/((?:ร|พ)\.[อต]\.(?:หญิง|ชาย)\s+\S+\s+\S+|นาย\s+\S+\s+\S+|นางสาว\s+\S+\s+\S+|นาง\s+\S+\s+\S+)/);
+  if(nameMatch){
+    out.name=(nameMatch[1]||nameMatch[0]||'').trim().replace(/\s{2,}.*/,'').trim();
+  }
+  return out;
+}
+
+function compareDocumentIdentity(r,identity){
+  const systemName=[r.prefix,r.fname,r.lname].filter(Boolean).join(' ').trim();
+  const systemHN=String(r.hn||'').trim();
+  const docName=String(identity&&identity.name||'').trim();
+  const docHN=String(identity&&identity.hn||'').trim();
+  const checks=[];
+
+  if(docName){
+    const a=normalizeThaiNameForCompare(systemName);
+    const b=normalizeThaiNameForCompare(docName);
+    checks.push({field:'name',ok:!!a&&!!b&&(a===b||a.includes(b)||b.includes(a)),system:systemName,doc:docName});
+  }
+  if(systemHN&&docHN){
+    checks.push({field:'hn',ok:systemHN===docHN,system:systemHN,doc:docHN});
+  }
+
+  const hasComparable=checks.length>0;
+  const mismatch=hasComparable&&checks.some(function(c){return !c.ok;});
+  return {systemName,systemHN,docName,docHN,checks,hasComparable,mismatch,matched:hasComparable&&!mismatch};
+}
+
+function renderPdfIdentityCheck(result){
+  pendingIdentityCheck=result||null;
+  const el=document.getElementById('pdf-identity-check');
+  if(!el) return;
+  el.classList.remove('hidden');
+
+  if(!result||!result.hasComparable){
+    el.style.background='#fff7ed';
+    el.style.border='1px solid #fed7aa';
+    el.style.color='#9a3412';
+    el.innerHTML='⚠️ ระบบยังยืนยันชื่อ/HN จากเอกสารไม่ได้ กรุณาตรวจต้นฉบับก่อนบันทึก';
+    return;
+  }
+
+  if(result.mismatch){
+    el.style.background='#fee2e2';
+    el.style.border='1px solid #fecaca';
+    el.style.color='#991b1b';
+    let details='';
+    result.checks.forEach(function(c){
+      if(c.field==='name'){
+        details+='<div>ชื่อในระบบ: <b>'+escapeSimple(c.system)+'</b></div>'
+          +'<div>ชื่อในเอกสาร: <b>'+escapeSimple(c.doc)+'</b> '+(c.ok?'✅':'❌')+'</div>';
+      } else if(c.field==='hn'){
+        details+='<div>HN ในระบบ: <b>'+escapeSimple(c.system)+'</b></div>'
+          +'<div>HN ในเอกสาร: <b>'+escapeSimple(c.doc)+'</b> '+(c.ok?'✅':'❌')+'</div>';
+      }
+    });
+    el.innerHTML='<b>⚠️ ข้อมูลเอกสารอาจไม่ตรงกับผู้รับบริการที่เลือก</b><div style="margin-top:5px;">'
+      +details+'</div><div style="margin-top:5px;">แนะนำให้ยกเลิกและเลือกไฟล์ใหม่</div>';
+  } else {
+    el.style.background='#dcfce7';
+    el.style.border='1px solid #bbf7d0';
+    el.style.color='#166534';
+    el.innerHTML='<b>✅ ข้อมูลเอกสารเบื้องต้นตรงกับผู้รับบริการ</b>'
+      +(result.docName?'<div>ชื่อจากเอกสาร: '+escapeSimple(result.docName)+'</div>':'')
+      +(result.docHN?'<div>HN จากเอกสาร: '+escapeSimple(result.docHN)+'</div>':'');
+  }
+}
+
 function openPdfModal(id){
   currentPdfModalId=id;
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[];
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[]; pendingIdentityCheck=null;
   const r=records.find(function(x){return x.id===id;});
   if(!r)return;
   document.getElementById('pdf-person-name').textContent=r.prefix+' '+r.fname+' '+r.lname;
+  document.getElementById('pdf-person-identity').innerHTML =
+    '<b>กำลังแนบผลให้:</b> '+escapeSimple([r.prefix,r.fname,r.lname].filter(Boolean).join(' '))
+    +(r.hn?' &nbsp;|&nbsp; HN: <b>'+escapeSimple(r.hn)+'</b>':'')
+    +(r.idcard?' &nbsp;|&nbsp; เลขบัตร: <b>*********'+escapeSimple(String(r.idcard).slice(-4))+'</b>':'');
+  const idCheckEl=document.getElementById('pdf-identity-check');
+  if(idCheckEl){idCheckEl.classList.add('hidden');idCheckEl.innerHTML='';}
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
   document.getElementById('pdf-preview-thumb').classList.add('hidden');
   document.getElementById('pdf-preview-images').classList.add('hidden');
@@ -3261,7 +3362,9 @@ function openPdfModal(id){
 }
 function closePdfModal(){ document.getElementById('modal-pdf').classList.add('hidden'); }
 function clearPdfPreview(){
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[];
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[]; pendingIdentityCheck=null;
+  const idCheckEl=document.getElementById('pdf-identity-check');
+  if(idCheckEl){idCheckEl.classList.add('hidden');idCheckEl.innerHTML='';}
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
   document.getElementById('pdf-preview-thumb').classList.add('hidden');
   document.getElementById('pdf-preview-images').classList.add('hidden');
@@ -3460,8 +3563,21 @@ function previewLabCombined(){
   loadingEl.textContent = fileType==='image' ? 'กำลังอ่านภาพ (OCR)...' : 'กำลังอ่าน PDF...';
   contentEl.innerHTML='';
   window.LabModule.renderFromSources('pdf-lab-preview-content', srcs, gender, fileType, r)
-    .then(function(){ loadingEl.textContent='✅ วิเคราะห์สำเร็จ'; })
-    .catch(function(){ loadingEl.textContent='⚠️ อ่านข้อมูลได้บางส่วน'; });
+    .then(function(){
+      loadingEl.textContent='✅ วิเคราะห์สำเร็จ';
+      return srcs.reduce(function(p,src){
+        return p.then(function(textSoFar){
+          return window.LabModule.sourceToText(src,fileType).then(function(t){return textSoFar+t+'\n';});
+        });
+      },Promise.resolve(''));
+    })
+    .then(function(textAll){
+      renderPdfIdentityCheck(compareDocumentIdentity(r,extractIdentityFromOcrText(textAll)));
+    })
+    .catch(function(){
+      loadingEl.textContent='⚠️ อ่านข้อมูลได้บางส่วน';
+      renderPdfIdentityCheck(null);
+    });
 }
 function dataUrlToBlob(dataUrl){
   const arr=dataUrl.split(',');
@@ -3479,6 +3595,16 @@ function savePdf(){
   if(!hasPdf && !hasImages){ alert('กรุณาแนบไฟล์หรือถ่ายภาพผลตรวจ'); return; }
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
+
+  if(pendingIdentityCheck&&pendingIdentityCheck.mismatch){
+    const ok=confirm(
+      '⚠️ ชื่อ/HN ที่อ่านจากเอกสารไม่ตรงกับผู้รับบริการที่เลือก\n\n'
+      +'แนะนำให้กดยกเลิกและเลือกไฟล์ที่ถูกต้อง\n\n'
+      +'หากตรวจสอบต้นฉบับด้วยตนเองแล้วและต้องการบันทึกต่อ ให้กด OK'
+    );
+    if(!ok)return;
+  }
+
   const stagedImages = hasImages ? pendingImages.slice() : [];
   const pdfBase64 = hasPdf ? pendingPdfBase64 : null;
   const pdfName = hasPdf ? pendingPdfName : (stagedImages.length+' รูปภาพ');
@@ -3629,6 +3755,32 @@ renderAdmin();
       if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
     });
 }
+
+async function replaceResultFile(id){
+  const r=records.find(function(x){return x.id===id;});
+  if(!r)return;
+
+  const ok=confirm(
+    'ต้องการเปลี่ยนไฟล์ผลตรวจของ '+[r.prefix,r.fname,r.lname].filter(Boolean).join(' ')+' ใช่หรือไม่?\n\n'
+    +'ผล Lab/NCD เดิมจะถูกยกเลิก และต้องตรวจสอบ OCR ใหม่อีกครั้ง'
+  );
+  if(!ok)return;
+
+  delete r.lab;
+  delete r.labDraft;
+  delete r.labValidation;
+  delete r.ocrRawText;
+  delete r.ncdAnalysis;
+  delete r.ncdRisk;
+  r.labStatus=null;
+  r.labVerified=false;
+  r.labVerifiedAt=null;
+  r.labVerifiedBy=null;
+
+  try{await updateRecordInSupabase(r);}catch(e){console.error(e);}
+  openPdfModal(id);
+}
+
 async function removePdf(){
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
