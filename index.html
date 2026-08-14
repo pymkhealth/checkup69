@@ -1106,8 +1106,9 @@ function extractLab(text,gender){
       if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
       const lab=extractLab(text,g);
       if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
-      const ncd=analyzeNCD(lab,gender,lab.age);
+     const ncd=analyzeNCD(lab,gender,lab.age);
       el.innerHTML=buildHTML(lab,gender,ncd);
+      el.innerHTML += '<div style="margin-top:16px;padding:12px;background:#1a1a1a;color:#0f0;font-family:monospace;font-size:11px;white-space:pre-wrap;border-radius:8px;max-height:400px;overflow:auto;"><b>[DEBUG OCR RAW TEXT]</b>\n' + text.substring(0,4000) + '</div>';
       return {lab,ncd};
     }catch(e){
       el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
