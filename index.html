@@ -1186,17 +1186,15 @@ function extractLab(text,gender){
   function buildHTML(d,gender,ncd,record){
     const f=gender==='F';
 
+    // หัวการ์ดห้ามใช้ชื่อ/อายุ/วันที่จาก OCR เพราะอาจอ่านติดข้อความข้างเคียง
+    // ใช้เฉพาะข้อมูลผู้รับบริการที่ลงทะเบียนไว้ในระบบ
     const displayName = record
       ? [record.prefix, record.fname, record.lname].filter(Boolean).join(' ').trim()
-      : (d.name || '');
+      : '';
 
     const displayAge = record && record.age !== undefined && record.age !== null
       ? record.age
-      : d.age;
-
-    const displayDate = record && record.pdfDate
-      ? record.pdfDate
-      : (d.date || '');
+      : null;
 
     const init = displayName
       ? displayName.replace(/(?:ร|พ)\.[อต]\.(?:หญิง|ชาย)\s*/g,'')
@@ -1296,7 +1294,10 @@ function extractLab(text,gender){
       <div class="lm-card">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:.875rem">
           <div class="lm-av" style="background:#E6F1FB;color:#185FA5">${init}</div>
-          <div style="flex:1"><p style="font-weight:500;font-size:15px;margin:0">${d.name||'ผู้รับบริการ'}</p><p style="font-size:13px;color:#888;margin:0">${d.age?`อายุ ${d.age} ปี`:''}${d.date?` • ${d.date}`:''}</p></div>
+          <div style="flex:1">
+            <p style="font-weight:500;font-size:15px;margin:0">${displayName||'ผู้รับบริการ'}</p>
+            <p style="font-size:13px;color:#888;margin:0">${displayAge!==null&&displayAge!==undefined&&displayAge!==''?`อายุ ${displayAge} ปี`:''}</p>
+          </div>
           <span class="lm-b ${ov.cls}">${ov.lbl}</span>
         </div>
         <div class="lm-mg">${metH}</div>
