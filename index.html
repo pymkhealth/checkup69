@@ -1276,7 +1276,7 @@ function extractLab(text,gender){
     if(!ncd) ncd=analyzeNCD(lab,gender,lab&&lab.age);
     el.innerHTML=buildHTML(lab,gender,ncd);
   }
-  global.LabModule={renderInto,renderFromFile,renderFromData,renderFromSources,analyzeNCD,extractLab,pdfToText,imageToText,sourceToText};
+  global.LabModule={renderInto,renderFromFile,renderFromData,renderFromSources,analyzeNCD,extractLab,validateLab,pdfToText,imageToText,sourceToText};
 })(window);
 // ======= NCD DASHBOARD (Admin) =======
 window.renderAdminNcdDashboard = async function(records) {
@@ -3250,7 +3250,7 @@ renderAdmin();
   r.labDraft = lab;
 
   // ตรวจจับค่าที่น่าสงสัย
-  r.labValidation = validateLab(lab);
+  r.labValidation = window.LabModule.validateLab(lab);
 
   // เก็บข้อความ OCR ดิบไว้สำหรับการตรวจสอบภายใน
   r.ocrRawText = textAll;
@@ -3412,7 +3412,7 @@ function openFileViewer(r){
     ตรวจความสมเหตุสมผลอีกครั้ง
   */
   const problems =
-    validateLab(verifiedLab);
+    window.LabModule.validateLab(verifiedLab);
 
   if(problems.length > 0){
 
