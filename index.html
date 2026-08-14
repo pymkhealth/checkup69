@@ -1296,7 +1296,7 @@ function extractLab(text,gender){
           <div class="lm-av" style="background:#E6F1FB;color:#185FA5">${init}</div>
           <div style="flex:1">
             <p style="font-weight:500;font-size:15px;margin:0">${displayName||'ผู้รับบริการ'}</p>
-            <p style="font-size:13px;color:#888;margin:0">${displayAge!==null&&displayAge!==undefined&&displayAge!==''?`อายุ ${displayAge} ปี`:''}</p>
+            <p style="font-size:13px;color:#888;margin:0">${displayAge!==null&&displayAge!==undefined&&displayAge!==''?`อายุ ${displayAge} ปี`:'ข้อมูลจากทะเบียนผู้รับบริการ'}</p>
           </div>
           <span class="lm-b ${ov.cls}">${ov.lbl}</span>
         </div>
@@ -1329,8 +1329,9 @@ function extractLab(text,gender){
       if(!g){const nmTmp=text.match(/((?:ร|พ)\.[อต]\.หญิง|นาง(?:สาว)?)/);g=nmTmp?'F':'M';}
       const lab=extractLab(text,g);
       if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
-      const ncd=analyzeNCD(lab,gender,lab.age);
-      el.innerHTML=buildHTML(lab,gender,ncd,global.currentRecord||null);
+      const analysisAge = record && record.age !== undefined && record.age !== null ? record.age : lab.age;
+      const ncd=analyzeNCD(lab,gender,analysisAge);
+      el.innerHTML=buildHTML(lab,gender,ncd,record||null);
     }catch(e){
       el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
     }
@@ -1338,7 +1339,7 @@ function extractLab(text,gender){
   async function renderFromFile(file,containerId,gender){
     return renderInto(containerId,await file.arrayBuffer(),gender);
   }
-  async function renderFromSources(containerId,srcs,gender,fileType){
+  async function renderFromSources(containerId,srcs,gender,fileType,record){
     const el=document.getElementById(containerId);
     if(!el)return;
     el.innerHTML='<p style="color:#888;font-size:14px;padding:1rem;text-align:center">⏳ '+(fileType==='image'?'กำลังอ่านภาพ (OCR)...':'กำลังอ่านผลตรวจ...')+'</p>';
@@ -1350,14 +1351,14 @@ function extractLab(text,gender){
       const lab=extractLab(text,g);
       if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
      const ncd=analyzeNCD(lab,gender,lab.age);
-      el.innerHTML=buildHTML(lab,gender,ncd,global.currentRecord||null);
+      el.innerHTML=buildHTML(lab,gender,ncd,record||null);
       return {lab,ncd};
     }catch(e){
       el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
       throw e;
     }
   }
-  function renderFromData(containerId,lab,gender,ncd){
+  function renderFromData(containerId,lab,gender,ncd,record){
     const el=document.getElementById(containerId);
     if(!el)return;
     if(!ncd) ncd=analyzeNCD(lab,gender,lab&&lab.age);
@@ -2823,12 +2824,12 @@ function renderResult(r){
   const gender = r.gender === '1' ? 'M' : 'F';
   if(r.lab && window.LabModule){
     labSection.classList.remove('hidden');
-    window.LabModule.renderFromData('lab-result-container', r.lab, gender, r.ncdAnalysis);
+    window.LabModule.renderFromData('lab-result-container', r.lab, gender, r.ncdAnalysis, r);
     window._labRenderPromise = null;
   } else if(hasImages && window.LabModule){
     labSection.classList.remove('hidden');
     labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
-    window._labRenderPromise = window.LabModule.renderFromSources('lab-result-container', r.images.map(function(im){return im.data;}), gender, 'image');
+    window._labRenderPromise = window.LabModule.renderFromSources('lab-result-container', r.images.map(function(im){return im.data;}), gender, 'image', r);
   } else if(r.pdfData && window.LabModule){
     labSection.classList.remove('hidden');
     labContainer.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;font-size:14px;">⏳ กำลังวิเคราะห์ผลตรวจเลือด...</div>';
@@ -3458,7 +3459,7 @@ function previewLabCombined(){
   labSection.classList.remove('hidden');
   loadingEl.textContent = fileType==='image' ? 'กำลังอ่านภาพ (OCR)...' : 'กำลังอ่าน PDF...';
   contentEl.innerHTML='';
-  window.LabModule.renderFromSources('pdf-lab-preview-content', srcs, gender, fileType)
+  window.LabModule.renderFromSources('pdf-lab-preview-content', srcs, gender, fileType, r)
     .then(function(){ loadingEl.textContent='✅ วิเคราะห์สำเร็จ'; })
     .catch(function(){ loadingEl.textContent='⚠️ อ่านข้อมูลได้บางส่วน'; });
 }
