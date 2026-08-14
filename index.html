@@ -2616,6 +2616,8 @@ if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:cent
     } else if(r.labStatus==='pending_review'){
       pdfBadge='<button onclick="openLabReview(\''+r.id+'\')" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">⚠️ ตรวจสอบ OCR</button>'
         +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+    } else if(r.labStatus==='ocr_error'){
+      pdfBadge='<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="กดเพื่อแนบไฟล์เดิมและลองอ่านใหม่">⚠️ OCR ไม่สำเร็จ — ลองใหม่</button>';
     } else if(r.labStatus==='verified'){
       pdfBadge='<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">✅ ยืนยันแล้ว</button>'
         +'<button onclick="openLabReview(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="ตรวจ/แก้ไขผลอีกครั้ง">✎</button>';
@@ -3223,7 +3225,11 @@ renderAdmin();
     .then(function(){
       if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
       if(!window.LabModule) return;
-      const srcs = hasImages ? r.images.map(function(im){return im.data;}) : [r.pdfData];
+      // ใช้ไฟล์ต้นฉบับในเครื่องสำหรับ OCR หลังอัปโหลดสำเร็จ
+      // ไม่ใช้ URL จาก Supabase เพราะบางเบราว์เซอร์/PDF.js อาจติด CORS
+      const srcs = hasImages
+        ? stagedImages.map(function(im){ return im.dataUrl; })
+        : [pdfBase64];
       return srcs.reduce(function(p,src){
           return p.then(function(textSoFar){
             return window.LabModule.sourceToText(src, fileType).then(function(t){ return textSoFar+t+'\n'; });
@@ -3272,10 +3278,22 @@ renderAdmin();
           }
         });
     })
-    .catch(function(e){
-      console.error('Upload error (background):', e);
-      r._uploading=false;
-      alert('❌ อัปโหลดไฟล์ขึ้นเซิร์ฟเวอร์ไม่สำเร็จ (แต่ยังดูตัวอย่างในเครื่องนี้ได้ชั่วคราว) กรุณากดแนบไฟล์ใหม่อีกครั้ง: '+e.message);
+    .catch(async function(e){
+      console.error('Upload/OCR error (background):', e);
+      r._uploading = false;
+
+      // ถ้าไฟล์อัปโหลดขึ้น Supabase แล้ว แต่ OCR ล้มเหลว
+      // อย่าปล่อยสถานะค้างที่ processing
+      if(r.pdfData || (r.images && r.images.length)){
+        r.labStatus = 'ocr_error';
+        r.labVerified = false;
+        try{ await updateRecordInSupabase(r); }catch(saveErr){ console.error(saveErr); }
+
+        alert('⚠️ แนบไฟล์สำเร็จ แต่ระบบอ่าน OCR ไม่สำเร็จ\nกรุณากดปุ่มแก้ไข (✎) แล้วแนบไฟล์เดิมอีกครั้ง\n\nรายละเอียด: '+e.message);
+      } else {
+        alert('❌ อัปโหลดไฟล์ขึ้นเซิร์ฟเวอร์ไม่สำเร็จ กรุณาแนบไฟล์ใหม่อีกครั้ง\n\nรายละเอียด: '+e.message);
+      }
+
       if(!document.getElementById('page-admin').classList.contains('hidden')) renderAdmin();
     });
 }
