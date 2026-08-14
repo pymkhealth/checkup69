@@ -641,6 +641,86 @@
     </div>
   </div>
 </div>
+  <!-- MODAL ตรวจสอบผล OCR -->
+<div id="modal-lab-review" class="hidden modal-overlay">
+  <div class="sc p-6"
+       style="width:900px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
+      <div>
+        <h3 style="font-size:17px;font-weight:700;color:#1e293b;margin:0;">
+          🔬 ตรวจสอบผลที่ระบบอ่านจากเอกสาร
+        </h3>
+
+        <p id="lab-review-person"
+           style="font-size:13px;color:#64748b;margin:4px 0 0;">
+        </p>
+      </div>
+
+      <button class="bs"
+              style="padding:7px 14px;"
+              onclick="closeLabReview()">
+        ✕ ปิด
+      </button>
+    </div>
+
+    <div style="
+      background:#fef9c3;
+      border:1px solid #fde68a;
+      color:#854d0e;
+      border-radius:10px;
+      padding:12px 14px;
+      margin-bottom:14px;
+      font-size:13px;
+      line-height:1.6;
+    ">
+      ⚠️ กรุณาเปรียบเทียบค่ากับเอกสารต้นฉบับทุกครั้งก่อนกดยืนยัน
+      เนื่องจากระบบ OCR อาจอ่านตัวเลขคลาดเคลื่อนได้
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <button class="bs"
+              style="font-size:13px;"
+              onclick="viewLabReviewSource()">
+        👁️ เปิดดูเอกสารต้นฉบับ
+      </button>
+    </div>
+
+    <div id="lab-review-fields"></div>
+
+    <div id="lab-review-warning"
+         class="hidden"
+         style="
+           background:#fee2e2;
+           color:#991b1b;
+           border:1px solid #fecaca;
+           padding:12px 14px;
+           border-radius:10px;
+           margin-top:14px;
+           font-size:13px;
+           line-height:1.6;
+         ">
+    </div>
+
+    <div style="
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top:20px;
+      border-top:1px solid #e5e7eb;
+      padding-top:16px;
+    ">
+      <button class="bs" onclick="closeLabReview()">
+        ยกเลิก
+      </button>
+
+      <button class="bg" onclick="confirmLabReview()">
+        ✅ ยืนยันผลตรวจ
+      </button>
+    </div>
+
+  </div>
+</div>
 <!-- MODAL ดู PDF -->
 <div id="modal-pdf-viewer" class="hidden modal-overlay" style="padding:16px;">
   <div style="background:white;border-radius:12px;width:90vw;max-width:860px;height:90vh;display:flex;flex-direction:column;overflow:hidden;">
@@ -834,8 +914,9 @@
     return t;
   }
 
-  function n(text,re){const m=text.match(re);return m?parseFloat(m[1]):null;}
-  function n(text,re){const m=text.match(re);return m?parseFloat(m[1]):null;}
+  function n(text,re){
+    const m=text.match(re);
+    return m?parseFloat(m[1]):null;}
 function extractLab(text,gender){
   const f=gender==='F';
   const d={};
@@ -900,6 +981,74 @@ function extractLab(text,gender){
     (d.uric!==null&&(d.uric<(f?2.4:3.4)||d.uric>(f?6.0:7.0))) ||
     (d.ast!==null&&d.ast>(f?35:40)) || (d.alt!==null&&d.alt>(f?35:40));
   return d;
+}
+  function validateLab(lab){
+
+  const problems = [];
+
+  function check(key, label, min, max){
+
+    const value = lab[key];
+
+    if(value === null || value === undefined || value === ''){
+      return;
+    }
+
+    const numberValue = Number(value);
+
+    if(!Number.isFinite(numberValue)){
+      problems.push({
+        key: key,
+        label: label,
+        value: value,
+        reason: 'ไม่ใช่ตัวเลข'
+      });
+      return;
+    }
+
+    if(numberValue < min || numberValue > max){
+      problems.push({
+        key: key,
+        label: label,
+        value: numberValue,
+        reason: 'ค่าผิดปกติมาก ควรตรวจสอบกับเอกสารต้นฉบับ'
+      });
+    }
+  }
+
+  /*
+    หมายเหตุ:
+    ช่วงต่อไปนี้ใช้สำหรับตรวจจับความผิดพลาดจาก OCR
+    ไม่ใช่ Reference Range เพื่อวินิจฉัยโรค
+  */
+
+  check('hb',    'Hb',            2, 30);
+  check('hct',   'Hct',           5, 80);
+  check('rbc',   'RBC Count',     0.5, 10);
+
+  check('mcv',   'MCV',           30, 150);
+  check('mch',   'MCH',           5, 60);
+  check('mchc',  'MCHC',          10, 60);
+
+  check('plt',   'Platelet',      1, 2000);
+  check('wbc',   'WBC',           0.1, 100);
+
+  check('fbs',   'FBS',           20, 800);
+  check('chol',  'Cholesterol',   20, 1000);
+  check('tg',    'Triglyceride',  10, 5000);
+  check('hdl',   'HDL-C',         1, 300);
+  check('ldl',   'LDL-C',         1, 1000);
+
+  check('bun',   'BUN',           1, 300);
+  check('creat', 'Creatinine',     0.1, 30);
+  check('egfr',  'eGFR',           1, 200);
+  check('uric',  'Uric acid',      0.1, 30);
+
+  check('ast',   'AST',            1, 5000);
+  check('alt',   'ALT',            1, 5000);
+  check('alp',   'ALP',            1, 5000);
+
+  return problems;
 }
   function analyzeNCD(d,gender,age){
     const f=gender==='F';
@@ -1115,7 +1264,6 @@ function extractLab(text,gender){
       if(!gender)gender=lab.name&&lab.name.includes('หญิง')?'F':'M';
      const ncd=analyzeNCD(lab,gender,lab.age);
       el.innerHTML=buildHTML(lab,gender,ncd);
-      el.innerHTML += '<div style="margin-top:16px;padding:12px;background:#1a1a1a;color:#0f0;font-family:monospace;font-size:11px;white-space:pre-wrap;border-radius:8px;max-height:400px;overflow:auto;"><b>[DEBUG OCR RAW TEXT]</b>\n' + text.substring(0,4000) + '</div>';
       return {lab,ncd};
     }catch(e){
       el.innerHTML=`<div style="background:#FCEBEB;border-radius:8px;padding:1rem;color:#A32D2D;font-size:14px">ไม่สามารถอ่านไฟล์ได้: ${e.message}</div>`;
@@ -2457,11 +2605,74 @@ if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:cent
     const q9=parseInt(r.q9),q8=parseInt(r.q8);
     const q9tag=q9<=6?'tn':q9<=12?'tw':'ta';
     const q8tag=q8===0?'tn':q8<=8?'tw':'ta';
-    const hasPdf=r.pdfData||(r.images&&r.images.length);
-    const pdfBadge=hasPdf
-      ?'<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:'+(r._uploading?'#fef9c3':'#dcfce7')+';color:'+(r._uploading?'#92400e':'#166534')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="ดูไฟล์ + วิเคราะห์ Lab">'+(r._uploading?'⏳ กำลังอัพโหลด':'🔬 Lab')+'</button>'
-        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>'
-      :'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fef9c3;color:#92400e;border:1.5px dashed #fcd34d;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;">📎 แนบผลตรวจ</button>';
+   let pdfBadge = '';
+
+if(!hasPdf){
+
+  pdfBadge =
+    '<button onclick="openPdfModal(\'' + r.id + '\')" ' +
+    'style="background:#fef9c3;color:#92400e;border:1.5px dashed #fcd34d;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;">' +
+    '📎 แนบผลตรวจ' +
+    '</button>';
+
+}
+
+else if(r._uploading || r.labStatus === 'processing'){
+
+  pdfBadge =
+    '<span style="display:inline-block;background:#fef9c3;color:#92400e;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;">' +
+    '⏳ กำลังอ่านผล' +
+    '</span>';
+
+}
+
+else if(r.labStatus === 'pending_review'){
+
+  pdfBadge =
+    '<button onclick="openLabReview(\'' + r.id + '\')" ' +
+    'style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">' +
+    '⚠️ ตรวจสอบ OCR' +
+    '</button>' +
+
+    '<button onclick="openPdfModal(\'' + r.id + '\')" ' +
+    'style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:5px 7px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">' +
+    '✎' +
+    '</button>';
+
+}
+
+else if(r.labStatus === 'verified'){
+
+  pdfBadge =
+    '<button onclick="viewAdminPdf(\'' + r.id + '\')" ' +
+    'style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">' +
+    '✅ ยืนยันแล้ว' +
+    '</button>' +
+
+    '<button onclick="openLabReview(\'' + r.id + '\')" ' +
+    'style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:5px 7px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="ตรวจ/แก้ไขผลอีกครั้ง">' +
+    '✎' +
+    '</button>';
+
+}
+
+else{
+
+  /*
+    รองรับข้อมูลเก่าที่เคยแนบก่อนเพิ่มระบบ Verification
+  */
+  pdfBadge =
+    '<button onclick="viewAdminPdf(\'' + r.id + '\')" ' +
+    'style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">' +
+    '🔬 Lab เดิม' +
+    '</button>' +
+
+    '<button onclick="openPdfModal(\'' + r.id + '\')" ' +
+    'style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:5px 7px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">' +
+    '✎' +
+    '</button>';
+
+} 
     const appt=r.appointment;
     const hasAppt=appt&&appt.type==='appt'&&appt.date;
     let apptStatusBadge='';
@@ -2566,7 +2777,173 @@ function toggleAttended(id){
   renderAdmin();
 }
 // ======= PDF MODAL =======
-let currentPdfModalId=null, pendingImages=[], pendingPdfBase64=null, pendingPdfName=null, pendingPdfType=null;
+let currentPdfModalId = null;
+let pendingImages = [];
+let pendingPdfBase64 = null;
+let pendingPdfName = null;
+let pendingPdfType = null;
+
+let currentLabReviewId = null;
+  const LAB_FIELDS = [
+
+  { key:'hb',    label:'Hemoglobin (Hb)', unit:'g/dL' },
+  { key:'hct',   label:'Hematocrit (Hct)', unit:'%' },
+  { key:'rbc',   label:'RBC Count', unit:'×10⁶/µL' },
+
+  { key:'mcv',   label:'MCV', unit:'fL' },
+  { key:'mch',   label:'MCH', unit:'pg' },
+  { key:'mchc',  label:'MCHC', unit:'g/dL' },
+
+  { key:'plt',   label:'Platelet Count', unit:'×10³/µL' },
+  { key:'wbc',   label:'WBC Count', unit:'×10³/µL' },
+
+  { key:'neu',   label:'Neutrophil', unit:'%' },
+  { key:'lym',   label:'Lymphocyte', unit:'%' },
+  { key:'eos',   label:'Eosinophil', unit:'%' },
+  { key:'mono',  label:'Monocyte', unit:'%' },
+
+  { key:'fbs',   label:'FBS', unit:'mg/dL' },
+  { key:'chol',  label:'Cholesterol', unit:'mg/dL' },
+  { key:'tg',    label:'Triglyceride', unit:'mg/dL' },
+  { key:'hdl',   label:'HDL-C', unit:'mg/dL' },
+  { key:'ldl',   label:'LDL-C', unit:'mg/dL' },
+
+  { key:'bun',   label:'BUN', unit:'mg/dL' },
+  { key:'creat', label:'Creatinine', unit:'mg/dL' },
+  { key:'egfr',  label:'eGFR', unit:'mL/min/1.73m²' },
+  { key:'uric',  label:'Uric acid', unit:'mg/dL' },
+
+  { key:'ast',   label:'AST / SGOT', unit:'U/L' },
+  { key:'alt',   label:'ALT / SGPT', unit:'U/L' },
+  { key:'alp',   label:'ALP', unit:'U/L' }
+
+];
+  function openLabReview(id){
+
+  const r = records.find(function(x){
+    return x.id === id;
+  });
+
+  if(!r){
+    return;
+  }
+
+  if(!r.labDraft && r.lab){
+
+  r.labDraft =
+    JSON.parse(
+      JSON.stringify(r.lab)
+    );
+
+}
+
+if(!r.labDraft){
+  alert('ยังไม่มีข้อมูล OCR สำหรับรายการนี้');
+  return;
+}
+
+  currentLabReviewId = id;
+
+  const fullName =
+    (r.prefix || '') + ' ' +
+    (r.fname || '') + ' ' +
+    (r.lname || '');
+
+  document.getElementById('lab-review-person').textContent =
+    fullName.trim() +
+    (r.hn ? ' | HN: ' + r.hn : '');
+
+  const problems = r.labValidation || [];
+
+  const problemKeys = new Set(
+    problems.map(function(item){
+      return item.key;
+    })
+  );
+
+  let html = '';
+
+  LAB_FIELDS.forEach(function(field){
+
+    const value = r.labDraft[field.key];
+
+    const warning = problemKeys.has(field.key);
+
+    html +=
+      '<div style="display:grid;grid-template-columns:minmax(180px,1fr) 180px 120px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #f3f4f6;">'
+
+      + '<div>'
+
+      + '<div style="font-size:13px;font-weight:600;color:#374151;">'
+      + field.label
+      + '</div>'
+
+      + (
+          warning
+            ? '<div style="font-size:11px;color:#dc2626;margin-top:2px;">⚠️ กรุณาตรวจสอบค่านี้</div>'
+            : ''
+        )
+
+      + '</div>'
+
+      + '<input'
+      + ' id="review-' + field.key + '"'
+      + ' class="fi"'
+      + ' type="number"'
+      + ' step="any"'
+      + ' value="' + (value === null || value === undefined ? '' : value) + '"'
+      + ' style="' + (warning ? 'border-color:#ef4444;background:#fff1f2;' : '') + '"'
+      + '>'
+
+      + '<div style="font-size:12px;color:#64748b;">'
+      + field.unit
+      + '</div>'
+
+      + '</div>';
+  });
+
+  document.getElementById('lab-review-fields').innerHTML = html;
+
+  const warningBox =
+    document.getElementById('lab-review-warning');
+
+  if(problems.length > 0){
+
+    warningBox.innerHTML =
+      '<b>⚠️ ระบบพบค่าที่ควรตรวจสอบ ' +
+      problems.length +
+      ' รายการ</b><br><br>' +
+
+      problems.map(function(item){
+        return '• ' +
+          item.label +
+          ': ' +
+          item.value +
+          ' — ' +
+          item.reason;
+      }).join('<br>');
+
+    warningBox.classList.remove('hidden');
+
+  } else {
+
+    warningBox.innerHTML = '';
+    warningBox.classList.add('hidden');
+
+  }
+
+  document
+    .getElementById('modal-lab-review')
+    .classList.remove('hidden');
+}
+  function closeLabReview(){
+
+  document
+    .getElementById('modal-lab-review')
+    .classList.add('hidden');
+
+  currentLabReviewId = null;
+}
 function openPdfModal(id){
   currentPdfModalId=id;
   pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[];
@@ -2840,10 +3217,29 @@ function savePdf(){
     r.pdfData=url; r.pdfPath='pdfresults/'+r.id+'.'+ext;
     r.images=[];
   }
-  r.pdfName=pdfName; r.pdfDate=new Date().toLocaleString('th-TH');
-  r.resultFileType=fileType; r._uploading=true;
-  closePdfModal();
-  renderAdmin();
+ r.pdfName = pdfName;
+r.pdfDate = new Date().toLocaleString('th-TH');
+r.resultFileType = fileType;
+r._uploading = true;
+
+/*
+  เมื่อแนบผลใหม่
+  ให้ยกเลิกผลเดิมทั้งหมดทันที
+*/
+r.labStatus = 'processing';
+r.labVerified = false;
+r.labVerifiedAt = null;
+r.labVerifiedBy = null;
+
+delete r.lab;
+delete r.labDraft;
+delete r.labValidation;
+delete r.ocrRawText;
+delete r.ncdAnalysis;
+delete r.ncdRisk;
+
+closePdfModal();
+renderAdmin();
 
   let uploadChain;
   if(hasImages){
@@ -2884,18 +3280,41 @@ function savePdf(){
           });
         }, Promise.resolve(''))
         .then(function(textAll){
-          const gender = r.gender==='1' ? 'M' : 'F';
-          const lab = window.LabModule.extractLab(textAll, gender);
-          r.lab = lab;
-          const ncd = window.LabModule.analyzeNCD(lab, gender, r.age);
-          r.ncdAnalysis = ncd;
-          const highest = ncd.diseases.reduce(function(acc,d){
-            const order={high:3,medium:2,low:1};
-            return (order[d.level]||0) > (order[acc]||0) ? d.level : acc;
-          }, 'low');
-          r.ncdRisk = highest;
-          return updateRecordInSupabase(r);
-        })
+
+  const gender = r.gender === '1' ? 'M' : 'F';
+
+  // อ่านข้อมูลจาก OCR
+  const lab = window.LabModule.extractLab(textAll, gender);
+
+  /*
+    สำคัญ:
+    ยังไม่ให้ข้อมูล OCR เป็นผลจริง
+    เก็บไว้ใน labDraft เพื่อรอเจ้าหน้าที่ตรวจสอบ
+  */
+  r.labDraft = lab;
+
+  // ตรวจจับค่าที่น่าสงสัย
+  r.labValidation = validateLab(lab);
+
+  // เก็บข้อความ OCR ดิบไว้สำหรับการตรวจสอบภายใน
+  r.ocrRawText = textAll;
+
+  // สถานะ: รอตรวจสอบ
+  r.labStatus = 'pending_review';
+  r.labVerified = false;
+  r.labVerifiedAt = null;
+  r.labVerifiedBy = null;
+
+  /*
+    หากเคยมีผลเก่า
+    ให้ล้างออกก่อนเพื่อป้องกันการแสดงผลเก่า
+  */
+  delete r.lab;
+  delete r.ncdAnalysis;
+  delete r.ncdRisk;
+
+  return updateRecordInSupabase(r);
+})
         .then(function(){
           if(!document.getElementById('page-admin').classList.contains('hidden')){
             renderAdmin();
@@ -2924,7 +3343,26 @@ async function removePdf(){
       deletions.push(window._deleteObject(window._storageRef(window._storage, r.pdfPath)).catch(function(){}));
     }
     await Promise.all(deletions);
-    delete r.pdfData; delete r.pdfName; delete r.pdfDate; delete r.pdfPath; delete r.images; delete r.lab; delete r.ncdRisk; delete r.ncdAnalysis; delete r.resultFileType;
+    delete r.pdfData;
+delete r.pdfName;
+delete r.pdfDate;
+delete r.pdfPath;
+delete r.images;
+delete r.resultFileType;
+
+delete r.lab;
+delete r.labDraft;
+delete r.labValidation;
+
+delete r.labStatus;
+delete r.labVerified;
+delete r.labVerifiedAt;
+delete r.labVerifiedBy;
+
+delete r.ocrRawText;
+
+delete r.ncdRisk;
+delete r.ncdAnalysis;
     await updateRecordInSupabase(r);
     document.getElementById('pdf-current-wrap').classList.add('hidden');
     renderAdmin();
@@ -2948,6 +3386,164 @@ function openFileViewer(r){
   } else {
     w.document.write('<iframe src="'+r.pdfData+'" width="100%" height="100%" style="border:none;"></iframe>');
   }
+}
+  function viewLabReviewSource(){
+
+  const r = records.find(function(x){
+    return x.id === currentLabReviewId;
+  });
+
+  if(!r){
+    return;
+  }
+
+  openFileViewer(r);
+}
+  async function confirmLabReview(){
+
+  const r = records.find(function(x){
+    return x.id === currentLabReviewId;
+  });
+
+  if(!r){
+    return;
+  }
+
+  /*
+    copy ค่า OCR เดิม
+    เพื่อรักษาข้อมูลอื่น เช่น urineBlood
+  */
+  const verifiedLab =
+    JSON.parse(
+      JSON.stringify(r.labDraft || {})
+    );
+
+  /*
+    นำค่าที่ Admin ตรวจ/แก้ไขในช่องมาแทน OCR
+  */
+  LAB_FIELDS.forEach(function(field){
+
+    const input =
+      document.getElementById('review-' + field.key);
+
+    if(!input){
+      return;
+    }
+
+    const rawValue = input.value.trim();
+
+    if(rawValue === ''){
+      verifiedLab[field.key] = null;
+    } else {
+      verifiedLab[field.key] = Number(rawValue);
+    }
+
+  });
+
+  /*
+    ตรวจความสมเหตุสมผลอีกครั้ง
+  */
+  const problems =
+    validateLab(verifiedLab);
+
+  if(problems.length > 0){
+
+    const problemText =
+      problems.map(function(item){
+        return (
+          item.label +
+          ': ' +
+          item.value +
+          ' (' +
+          item.reason +
+          ')'
+        );
+      }).join('\n');
+
+    const confirmResult =
+      confirm(
+        'ยังพบค่าที่ระบบแจ้งเตือน:\n\n' +
+        problemText +
+        '\n\n' +
+        'หากคุณตรวจสอบกับเอกสารต้นฉบับแล้วและค่านี้ถูกต้อง ให้กด OK เพื่อยืนยัน'
+      );
+
+    if(!confirmResult){
+      return;
+    }
+  }
+
+  /*
+    ตรงนี้เท่านั้น
+    ที่ข้อมูลจะกลายเป็นผลจริง
+  */
+  r.lab = verifiedLab;
+
+  r.labStatus = 'verified';
+  r.labVerified = true;
+
+  r.labVerifiedAt =
+    new Date().toISOString();
+
+  r.labVerifiedBy =
+    currentAdmin
+      ? currentAdmin.id
+      : null;
+
+  /*
+    วิเคราะห์ NCD หลังจาก Admin ยืนยันแล้วเท่านั้น
+  */
+  const gender =
+    r.gender === '1'
+      ? 'M'
+      : 'F';
+
+  const ncd =
+    window.LabModule.analyzeNCD(
+      verifiedLab,
+      gender,
+      r.age
+    );
+
+  r.ncdAnalysis = ncd;
+
+  const order = {
+    high: 3,
+    medium: 2,
+    low: 1
+  };
+
+  const highest =
+    ncd.diseases.reduce(
+      function(acc, disease){
+
+        if(
+          (order[disease.level] || 0) >
+          (order[acc] || 0)
+        ){
+          return disease.level;
+        }
+
+        return acc;
+
+      },
+      'low'
+    );
+
+  r.ncdRisk = highest;
+
+  /*
+    บันทึกลง Supabase
+  */
+  await updateRecordInSupabase(r);
+
+  closeLabReview();
+
+  renderAdmin();
+
+  renderAdminNcdDashboard(records);
+
+  alert('✅ ตรวจสอบและยืนยันผลตรวจเรียบร้อยแล้ว');
 }
 function viewCurrentResultFile(){ openFileViewer(currentRecord); }
 function viewPdfCurrent(){ openFileViewer(records.find(function(x){return x.id===currentPdfModalId;})); }
