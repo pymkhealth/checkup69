@@ -2605,45 +2605,24 @@ if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:cent
     const q9=parseInt(r.q9),q8=parseInt(r.q8);
     const q9tag=q9<=6?'tn':q9<=12?'tw':'ta';
     const q8tag=q8===0?'tn':q8<=8?'tw':'ta';
-   const pdfBadge=hasPdf
-  ?'<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:'+(r._uploading?'#fef9c3':'#dcfce7')+';color:'+(r._uploading?'#92400e':'#166534')+';border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;" title="ดูไฟล์ + วิเคราะห์ Lab">'+(r._uploading?'⏳ กำลังอัพโหลด':'🔬 Lab')+'</button>'
-    +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>'
-  :'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fef9c3;color:#92400e;border:1.5px dashed #fcd34d;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;">📎 แนบผลตรวจ</button>';
+    const hasPdf=r.pdfData||(r.images&&r.images.length);
+    let pdfBadge='';
 
-else if(r.labStatus === 'verified'){
-
-  pdfBadge =
-    '<button onclick="viewAdminPdf(\'' + r.id + '\')" ' +
-    'style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">' +
-    '✅ ยืนยันแล้ว' +
-    '</button>' +
-
-    '<button onclick="openLabReview(\'' + r.id + '\')" ' +
-    'style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:5px 7px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="ตรวจ/แก้ไขผลอีกครั้ง">' +
-    '✎' +
-    '</button>';
-
-}
-
-else{
-
-  /*
-    รองรับข้อมูลเก่าที่เคยแนบก่อนเพิ่มระบบ Verification
-  */
-  pdfBadge =
-    '<button onclick="viewAdminPdf(\'' + r.id + '\')" ' +
-    'style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">' +
-    '🔬 Lab เดิม' +
-    '</button>' +
-
-    '<button onclick="openPdfModal(\'' + r.id + '\')" ' +
-    'style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:5px 7px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">' 
-    +'<td style="padding:8px 10px;font-size:13px;text-align:center;color:#9ca3af;font-weight:600;">'+(i+1)+'</td>'
-+'<td style="padding:8px 12px;font-size:13px;"><button onclick="viewAdmin(\''+r.id+'\')" style="background:none;border:none;color:#b7202b;font-weight:600;cursor:pointer;font-size:13px;font-family:Sarabun,sans-serif;text-align:left;padding:0;text-decoration:underline;text-underline-offset:2px;">'+r.prefix+' '+r.fname+' '+r.lname+'</button></td>'
-    '✎' +
-    '</button>';
-
-} 
+    if(!hasPdf){
+      pdfBadge='<button onclick="openPdfModal(\''+r.id+'\')" style="background:#fef9c3;color:#92400e;border:1.5px dashed #fcd34d;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;">📎 แนบผลตรวจ</button>';
+    } else if(r._uploading || r.labStatus==='processing'){
+      pdfBadge='<span style="display:inline-block;background:#fef9c3;color:#92400e;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;">⏳ กำลังอ่านผล</span>'
+        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+    } else if(r.labStatus==='pending_review'){
+      pdfBadge='<button onclick="openLabReview(\''+r.id+'\')" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">⚠️ ตรวจสอบ OCR</button>'
+        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+    } else if(r.labStatus==='verified'){
+      pdfBadge='<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">✅ ยืนยันแล้ว</button>'
+        +'<button onclick="openLabReview(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;" title="ตรวจ/แก้ไขผลอีกครั้ง">✎</button>';
+    } else {
+      pdfBadge='<button onclick="viewAdminPdf(\''+r.id+'\')" style="background:#dcfce7;color:#166534;border:none;border-radius:8px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🔬 Lab</button>'
+        +'<button onclick="openPdfModal(\''+r.id+'\')" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:4px 6px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif;margin-left:3px;">✎</button>';
+    }
     const appt=r.appointment;
     const hasAppt=appt&&appt.type==='appt'&&appt.date;
     let apptStatusBadge='';
