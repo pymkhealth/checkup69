@@ -828,43 +828,72 @@
   }
 
   function n(text,re){const m=text.match(re);return m?parseFloat(m[1]):null;}
-  function extractLab(text,gender){
-    const f=gender==='F';
-    const d={};
-    const nm=text.match(/ชื่อ\s*:\s*([^\n\r]+)/)||text.match(/((?:ร|พ)\.[อต]\.(?:หญิง|ชาย)\s+\S+\s+\S+|นาย\s+\S+\s+\S+|นาง(?:สาว)?\s+\S+\s+\S+)/);
-    d.name=nm?nm[1].trim():null;
-    const am=text.match(/อายุ\s*:\s*(\d+)\s*ป/);d.age=am?parseInt(am[1]):null;
-    const dm=text.match(/(\d+\s+(?:มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s+\d{4})/);
-    d.date=dm?dm[1]:null;
-    d.hb=n(text,/Hb\s+([\d.]+)/);d.hct=n(text,/Hct\s+([\d.]+)/);
-    d.rbc=n(text,/RBC count\s+([\d.]+)/);d.mcv=n(text,/MCV\s+([\d.]+)/);
-    d.mch=n(text,/MCH\s+([\d.]+)/);d.mchc=n(text,/MCHC\s+([\d.]+)/);
-    d.plt=n(text,/Platelet Count\s+([\d.]+)/);d.wbc=n(text,/WBC count\s+([\d.]+)/);
-    d.neu=n(text,/Neutrophil\s+([\d.]+)/);d.lym=n(text,/Lymphocyte\s+([\d.]+)/);
-    d.eos=n(text,/Eosinophil\s+([\d.]+)/);d.mono=n(text,/Monocyte\s+([\d.]+)/);
-    d.chol=n(text,/Cholesterol\s+([\d.]+)/);d.tg=n(text,/Triglyceride\s+([\d.]+)/);
-    d.fbs=n(text,/Glucose\(FBS\)\s+([\d.]+)/)||n(text,/Glucose\s+([\d.]+)/);
-    d.uric=n(text,/Uric acid\.\.\s+([\d.]+)/);
-    d.bun=n(text,/BUN[^\d]*([\d.]+)/);d.creat=n(text,/Creatinine[^\d]*([\d.]+)/);
-    d.egfr=n(text,/eGFR[^\d]*([\d.]+)/);
-    d.alt=n(text,/SGPT\(ALT\)[^\d]*([\d.]+)/);d.ast=n(text,/SGOT\(AST\)[^\d]*([\d.]+)/);d.alp=n(text,/ALP[^\d]*([\d.]+)/);
-    d.hdl=n(text,/HDL-?C?\s*[^\d]*([\d.]+)/);d.ldl=n(text,/LDL-?C?\s*[^\d]*([\d.]+)/);
-    d.urineBlood=/3\+\s*Blood|2\+\s*Blood|1\+\s*Blood/.test(text);
-    d.urineProtein=!/Negative Protein/.test(text)&&/Protein/.test(text);
-    d.urineGlucose=!/Glucose Negative/.test(text)&&/Glucose/.test(text);
-    d.urineRBC=n(text,/(\d+)-\d+\s+RBC\s+0\s*-\s*2/);
-    d.urinePeriod=/มีประจำเดือน|มีประจําเดือน/.test(text);
-    const hctRefLo=f?36:40;
-    d.cbcAbnormal = (d.hb!==null&&d.hb<(f?12:14)) || (d.hct!==null&&d.hct<hctRefLo) ||
-      (d.wbc!==null&&(d.wbc<4||d.wbc>10)) || (d.plt!==null&&(d.plt<140||d.plt>440));
-    d.bloodChemAbnormal = (d.fbs!==null&&(d.fbs<70||d.fbs>100)) ||
-      (d.chol!==null&&d.chol>200) || (d.tg!==null&&d.tg>=150) ||
-      (d.bun!==null&&(d.bun<6||d.bun>20)) ||
-      (d.creat!==null&&(d.creat<(f?0.5:0.6)||d.creat>(f?1.0:1.2))) ||
-      (d.uric!==null&&(d.uric<(f?2.4:3.4)||d.uric>(f?6.0:7.0))) ||
-      (d.ast!==null&&d.ast>(f?35:40)) || (d.alt!==null&&d.alt>(f?35:40));
-    return d;
+  function n(text,re){const m=text.match(re);return m?parseFloat(m[1]):null;}
+function extractLab(text,gender){
+  const f=gender==='F';
+  const d={};
+  const nm=text.match(/ชื่อ\s*:\s*([^\n\r]+)/)||text.match(/((?:ร|พ)\.[อต]\.(?:หญิง|ชาย)\s+\S+\s+\S+|นาย\s+\S+\s+\S+|นาง(?:สาว)?\s+\S+\s+\S+)/);
+  d.name=nm?nm[1].trim():null;
+  const am=text.match(/อายุ\s*:\s*(\d+)\s*ป/);d.age=am?parseInt(am[1]):null;
+  const dm=text.match(/(\d+\s+(?:มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)\s+\d{4})/);
+  d.date=dm?dm[1]:null;
+
+  // ── เติม flag "i" (case-insensitive) ทุกตัว + รองรับ Platelet(s) ทั้งสองแบบ ──
+  d.hb=n(text,/Hb\s+([\d.]+)/i);
+  d.hct=n(text,/Hct\s+([\d.]+)/i);
+  d.rbc=n(text,/RBC\s*Count\s+([\d.]+)/i);
+  d.mcv=n(text,/MCV\s+([\d.]+)/i);
+  d.mch=n(text,/MCH\s+([\d.]+)/i);
+  d.mchc=n(text,/MCHC\s+([\d.]+)/i);
+  d.plt=n(text,/Platelets?\s*Count\s+([\d.]+)/i);
+  d.wbc=n(text,/WBC\s*Count\s+([\d.]+)/i);
+  d.neu=n(text,/Neutrophil\s+([\d.]+)/i);
+  d.lym=n(text,/Lymphocyte\s+([\d.]+)/i);
+  d.eos=n(text,/Eosinophil\s+([\d.]+)/i);
+  d.mono=n(text,/Monocyte\s+([\d.]+)/i);
+  d.chol=n(text,/Cholesterol\s+([\d.]+)/i);
+  d.tg=n(text,/Triglycerides?\s+([\d.]+)/i);
+  d.fbs=n(text,/Glucose\s*\(?FBS\)?\s+([\d.]+)/i);
+  d.uric=n(text,/Uric\s*(?:acid)?\.{0,2}\s+([\d.]+)/i);
+  d.bun=n(text,/BUN[^\d]*([\d.]+)/i);
+  d.creat=n(text,/Creatinine[^\d]*([\d.]+)/i);
+  d.egfr=n(text,/eGFR[^\d]*([\d.]+)/i);
+  // รองรับทั้ง "ALT" เดี่ยวๆ และ "SGPT(ALT)"
+  d.alt=n(text,/(?:SGPT\s*\(?ALT\)?|ALT)[^\d]*([\d.]+)/i);
+  d.ast=n(text,/(?:SGOT\s*\(?AST\)?|AST)[^\d]*([\d.]+)/i);
+  d.alp=n(text,/ALP[^\d]*([\d.]+)/i);
+  d.hdl=n(text,/HDL-?C?\s*[^\d]*([\d.]+)/i);
+  d.ldl=n(text,/LDL-?C?\s*[^\d]*([\d.]+)/i);
+
+  // ── ปัสสาวะ: แก้ลำดับให้ตรงกับฟอร์มจริง (ชื่อรายการ มาก่อนค่า) ──
+  function urineVal(label){
+    const m=text.match(new RegExp(label+"\\s+([A-Za-z0-9+]+)","i"));
+    return m?m[1].trim():null;
   }
+  const bloodVal=urineVal('Blood');
+  d.urineBlood = !!bloodVal && !/negative/i.test(bloodVal);
+
+  const proteinVal=urineVal('Protein');
+  d.urineProtein = !!proteinVal && !/negative/i.test(proteinVal);
+
+  // Glucose มี 2 จุดในฟอร์ม (ปัสสาวะ กับ FBS) — จำกัดให้จับเฉพาะที่อยู่ใกล้คำว่า "ปัสสาวะ"/UA
+  const glucoseVal=urineVal('Glucose');
+  d.urineGlucose = !!glucoseVal && !/negative/i.test(glucoseVal) && /pH|Sp\.?\s*Gr|Nitrite|Leukocyte/i.test(text);
+
+  d.urineRBC=n(text,/(\d+)\s*-\s*\d+\s+RBC\s+0\s*-\s*2/i);
+  d.urinePeriod=/มีประจำเดือน|มีประจําเดือน/.test(text);
+
+  const hctRefLo=f?36:40;
+  d.cbcAbnormal = (d.hb!==null&&d.hb<(f?12:14)) || (d.hct!==null&&d.hct<hctRefLo) ||
+    (d.wbc!==null&&(d.wbc<4||d.wbc>10)) || (d.plt!==null&&(d.plt<140||d.plt>440));
+  d.bloodChemAbnormal = (d.fbs!==null&&(d.fbs<70||d.fbs>100)) ||
+    (d.chol!==null&&d.chol>200) || (d.tg!==null&&d.tg>=150) ||
+    (d.bun!==null&&(d.bun<6||d.bun>20)) ||
+    (d.creat!==null&&(d.creat<(f?0.5:0.6)||d.creat>(f?1.0:1.2))) ||
+    (d.uric!==null&&(d.uric<(f?2.4:3.4)||d.uric>(f?6.0:7.0))) ||
+    (d.ast!==null&&d.ast>(f?35:40)) || (d.alt!==null&&d.alt>(f?35:40));
+  return d;
+}
   function analyzeNCD(d,gender,age){
     const f=gender==='F';
     const diseases=[];
