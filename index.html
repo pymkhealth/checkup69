@@ -587,11 +587,11 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
         <div><label class="fl">น้ำหนัก (kg) <span style="color:red">*</span></label><input type="number" id="f-weight" class="fi" placeholder="kg" step="0.1" oninput="calcBMI();checkRegistrationVitals()"></div>
         <div><label class="fl">ส่วนสูง (cm) <span style="color:red">*</span></label><input type="number" id="f-height" class="fi" placeholder="cm" oninput="calcBMI();checkRegistrationVitals()"></div>
-        <div><label class="fl">BMI (kg/m²)</label><input type="text" id="f-bmi" class="fi" readonly style="background:#f0f4ff;font-weight:700;" placeholder="อัตโนมัติ"></div>
-        <div><label class="fl">รอบเอว (cm)</label><input type="number" id="f-waist" class="fi" placeholder="cm" step="0.1" oninput="checkRegistrationVitals()"></div>
-        <div><label class="fl">ความดันตัวบน SBP (mmHg)</label><input type="number" id="f-sbp" class="fi" placeholder="เช่น 120" min="50" max="300" oninput="checkRegistrationVitals()"></div>
-        <div><label class="fl">ความดันตัวล่าง DBP (mmHg)</label><input type="number" id="f-dbp" class="fi" placeholder="เช่น 80" min="30" max="200" oninput="checkRegistrationVitals()"></div>
-        <div><label class="fl">ชีพจร (ครั้ง/นาที)</label><input type="number" id="f-pulse" class="fi" placeholder="เช่น 72" min="30" max="220" oninput="checkRegistrationVitals()"></div>
+        <div><label class="fl">BMI (kg/m²) <span style="color:red">*</span></label><input type="text" id="f-bmi" class="fi" readonly style="background:#f0f4ff;font-weight:700;" placeholder="อัตโนมัติ"></div>
+        <div><label class="fl">รอบเอว (cm) <span style="color:red">*</span></label><input type="number" id="f-waist" class="fi" placeholder="มากกว่า 55 cm (≈ 22 นิ้วขึ้นไป)" min="55.1" step="0.1" oninput="checkWaistMinimum();checkRegistrationVitals()"><div id="waist-min-hint" style="font-size:10px;color:#9ca3af;margin-top:4px;">กำหนดให้กรอกมากกว่า 55 cm หรือประมาณ 22 นิ้วขึ้นไป</div></div>
+        <div><label class="fl">ความดันตัวบน SBP (mmHg) <span style="color:red">*</span></label><input type="number" id="f-sbp" class="fi" placeholder="เช่น 120" min="50" max="300" oninput="checkRegistrationVitals()"></div>
+        <div><label class="fl">ความดันตัวล่าง DBP (mmHg) <span style="color:red">*</span></label><input type="number" id="f-dbp" class="fi" placeholder="เช่น 80" min="30" max="200" oninput="checkRegistrationVitals()"></div>
+        <div><label class="fl">ชีพจร (ครั้ง/นาที) <span style="color:red">*</span></label><input type="number" id="f-pulse" class="fi" placeholder="เช่น 72" min="30" max="220" oninput="checkRegistrationVitals()"></div>
       </div>
       <div id="bmi-result" style="margin-top:8px;font-size:13px;font-weight:600;"></div>
       <div id="vitals-result" class="hidden" style="margin-top:10px;border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.65;"></div>
@@ -600,25 +600,32 @@
     <div style="margin-bottom:18px;">
       <h3 style="font-size:14px;font-weight:700;color:#374151;margin:0 0 12px;">🚬 พฤติกรรมสุขภาพ</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
-        <div><label class="fl">การสูบบุหรี่</label><select id="f-smoke" class="fi" onchange="checkAddictions()"><option value="0">ไม่เคยสูบ</option><option value="1">เคยสูบ แต่เลิกแล้ว</option><option value="2">สูบเป็นครั้งคราว</option><option value="3">สูบเป็นประจำ</option></select></div>
-        <div><label class="fl">การดื่มแอลกอฮอล์</label><select id="f-alcohol" class="fi" onchange="checkAddictions()"><option value="0">ไม่เคยดื่ม</option><option value="1">เคยดื่ม แต่เลิกแล้ว</option><option value="2">ดื่มเป็นครั้งคราว</option><option value="3">ดื่มเป็นประจำ</option></select></div>
-        <div><label class="fl">การออกกำลังกาย</label><select id="f-exercise" class="fi"><option value="0">ไม่เคยออกกำลังกาย</option><option value="1">ออกกำลังกาย ต่ำกว่าเกณฑ์</option><option value="2">ออกกำลังกาย ตามเกณฑ์</option></select></div>
+        <div><label class="fl">การสูบบุหรี่ <span style="color:red">*</span></label><select id="f-smoke" class="fi" onchange="checkAddictions()"><option value="">-- เลือก --</option><option value="0">ไม่เคยสูบ</option><option value="1">เคยสูบ แต่เลิกแล้ว</option><option value="2">สูบเป็นครั้งคราว</option><option value="3">สูบเป็นประจำ</option></select></div>
+        <div><label class="fl">การดื่มแอลกอฮอล์ <span style="color:red">*</span></label><select id="f-alcohol" class="fi" onchange="checkAddictions()"><option value="">-- เลือก --</option><option value="0">ไม่เคยดื่ม</option><option value="1">เคยดื่ม แต่เลิกแล้ว</option><option value="2">ดื่มเป็นครั้งคราว</option><option value="3">ดื่มเป็นประจำ</option></select></div>
+        <div><label class="fl">การออกกำลังกาย <span style="color:red">*</span></label><select id="f-exercise" class="fi"><option value="">-- เลือก --</option><option value="0">ไม่เคยออกกำลังกาย</option><option value="1">ออกกำลังกาย ต่ำกว่าเกณฑ์</option><option value="2">ออกกำลังกาย ตามเกณฑ์</option></select></div>
       </div>
     </div>
     <div id="smoke-assess" class="hidden" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:14px;margin-bottom:14px;">
       <h3 style="font-size:13px;font-weight:700;color:#c2410c;margin:0 0 10px;">🚬 แบบประเมินการติดบุหรี่ (Fagerstrom)</h3>
       <div style="display:grid;gap:8px;">
-        <div><label class="fl" style="font-size:13px;">1. สูบบุหรี่มวนแรกหลังตื่นนอนภายในกี่นาที?</label><select id="fag1" class="fi" style="font-size:13px;"><option value="3">ภายใน 5 นาที (3)</option><option value="2">6-30 นาที (2)</option><option value="1">31-60 นาที (1)</option><option value="0">หลังจาก 60 นาที (0)</option></select></div>
-        <div><label class="fl" style="font-size:13px;">2. รู้สึกลำบากที่จะงดสูบบุหรี่ในที่ต้องห้ามหรือไม่?</label><select id="fag2" class="fi" style="font-size:13px;"><option value="1">ใช่ (1)</option><option value="0">ไม่ใช่ (0)</option></select></div>
-        <div><label class="fl" style="font-size:13px;">3. สูบบุหรี่วันละกี่มวน?</label><select id="fag3" class="fi" style="font-size:13px;"><option value="3">31 มวนขึ้นไป (3)</option><option value="2">21-30 มวน (2)</option><option value="1">11-20 มวน (1)</option><option value="0">10 มวนหรือน้อยกว่า (0)</option></select></div>
+        <div><label class="fl" style="font-size:13px;">1. สูบบุหรี่มวนแรกหลังตื่นนอนภายในกี่นาที?</label><select id="fag1" class="fi" style="font-size:13px;"><option value="">-- เลือก --</option><option value="3">ภายใน 5 นาที (3)</option><option value="2">6-30 นาที (2)</option><option value="1">31-60 นาที (1)</option><option value="0">หลังจาก 60 นาที (0)</option></select></div>
+        <div><label class="fl" style="font-size:13px;">2. รู้สึกลำบากที่จะงดสูบบุหรี่ในที่ต้องห้ามหรือไม่?</label><select id="fag2" class="fi" style="font-size:13px;"><option value="">-- เลือก --</option><option value="1">ใช่ (1)</option><option value="0">ไม่ใช่ (0)</option></select></div>
+        <div><label class="fl" style="font-size:13px;">3. สูบบุหรี่วันละกี่มวน?</label><select id="fag3" class="fi" style="font-size:13px;"><option value="">-- เลือก --</option><option value="3">31 มวนขึ้นไป (3)</option><option value="2">21-30 มวน (2)</option><option value="1">11-20 มวน (1)</option><option value="0">10 มวนหรือน้อยกว่า (0)</option></select></div>
       </div>
     </div>
     <div id="alcohol-assess" class="hidden" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px;margin-bottom:14px;">
-      <h3 style="font-size:13px;font-weight:700;color:#92400e;margin:0 0 10px;">🍺 แบบประเมินการดื่มสุรา (AUDIT-C)</h3>
+      <h3 style="font-size:13px;font-weight:700;color:#92400e;margin:0 0 6px;">🍺 แบบประเมินการดื่มสุรา (AUDIT-C)</h3>
+      <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:10px;font-size:11px;color:#78350f;line-height:1.65;">
+        <b>ℹ️ 1 ดริงค์ หรือ 1 ดื่มมาตรฐาน ≈ แอลกอฮอล์ 10 กรัม</b><br>
+        • เบียร์ประมาณ 285 mL ≈ เกือบ 1 กระป๋องเล็ก 320–330 mL หรือประมาณครึ่งขวดใหญ่ 620 mL<br>
+        • ไวน์ประมาณ 100 mL ≈ 1 แก้วเล็ก หรือประมาณ 1/7–1/8 ขวด 750 mL<br>
+        • เหล้ากลั่นประมาณ 30 mL ≈ 1 เป๊ก หรือประมาณ 1/23 ขวด 700 mL<br>
+        <span style="font-size:10px;opacity:.8;">* เป็นค่าประมาณ ปริมาณแอลกอฮอล์จริงขึ้นกับชนิดและความเข้มข้นของเครื่องดื่ม</span>
+      </div>
       <div style="display:grid;gap:8px;">
-        <div><label class="fl" style="font-size:13px;">1. ดื่มแอลกอฮอล์บ่อยแค่ไหน?</label><select id="audit1" class="fi" style="font-size:13px;"><option value="0">ไม่ดื่ม (0)</option><option value="1">1 ครั้ง/เดือนหรือน้อยกว่า (1)</option><option value="2">2-4 ครั้ง/เดือน (2)</option><option value="3">2-3 ครั้ง/สัปดาห์ (3)</option><option value="4">4 ครั้ง/สัปดาห์ขึ้นไป (4)</option></select></div>
-        <div><label class="fl" style="font-size:13px;">2. ในวันที่ดื่ม ดื่มกี่ดริงค์?</label><select id="audit2" class="fi" style="font-size:13px;"><option value="0">1-2 ดริงค์ (0)</option><option value="1">3-4 ดริงค์ (1)</option><option value="2">5-6 ดริงค์ (2)</option><option value="3">7-9 ดริงค์ (3)</option><option value="4">10 ดริงค์ขึ้นไป (4)</option></select></div>
-        <div><label class="fl" style="font-size:13px;">3. ดื่มหนักเกิน 6 ดริงค์ใน 1 ครั้ง บ่อยแค่ไหน?</label><select id="audit3" class="fi" style="font-size:13px;"><option value="0">ไม่เคย (0)</option><option value="1">น้อยกว่า 1 ครั้ง/เดือน (1)</option><option value="2">1 ครั้ง/เดือน (2)</option><option value="3">1 ครั้ง/สัปดาห์ (3)</option><option value="4">ทุกวัน (4)</option></select></div>
+        <div><label class="fl" style="font-size:13px;">1. ดื่มแอลกอฮอล์บ่อยแค่ไหน?</label><select id="audit1" class="fi" style="font-size:13px;"><option value="">-- เลือก --</option><option value="0">ไม่ดื่ม (0)</option><option value="1">1 ครั้ง/เดือนหรือน้อยกว่า (1)</option><option value="2">2-4 ครั้ง/เดือน (2)</option><option value="3">2-3 ครั้ง/สัปดาห์ (3)</option><option value="4">4 ครั้ง/สัปดาห์ขึ้นไป (4)</option></select></div>
+        <div><label class="fl" style="font-size:13px;">2. ในวันที่ดื่ม ดื่มกี่ดริงค์?</label><select id="audit2" class="fi" style="font-size:13px;"><option value="">-- เลือก --</option><option value="0">1-2 ดริงค์ (0)</option><option value="1">3-4 ดริงค์ (1)</option><option value="2">5-6 ดริงค์ (2)</option><option value="3">7-9 ดริงค์ (3)</option><option value="4">10 ดริงค์ขึ้นไป (4)</option></select></div>
+        <div><label class="fl" style="font-size:13px;">3. ดื่มหนักเกิน 6 ดริงค์ใน 1 ครั้ง บ่อยแค่ไหน?</label><select id="audit3" class="fi" style="font-size:13px;"><option value="">-- เลือก --</option><option value="0">ไม่เคย (0)</option><option value="1">น้อยกว่า 1 ครั้ง/เดือน (1)</option><option value="2">1 ครั้ง/เดือน (2)</option><option value="3">1 ครั้ง/สัปดาห์ (3)</option><option value="4">ทุกวัน (4)</option></select></div>
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:20px;">
@@ -646,7 +653,7 @@
       </div>
     </div>
     <div id="medicine-section" class="hidden" style="margin-bottom:18px;">
-      <h3 style="font-size:14px;font-weight:700;color:#374151;margin:0 0 10px;">💊 ประวัติการรับยา</h3>
+      <h3 style="font-size:14px;font-weight:700;color:#374151;margin:0 0 10px;">💊 ประวัติการรับยา <span style="color:red">*</span></h3>
       <div class="rg">
         <label class="rb"><input type="radio" name="medicine" value="1"> รับยาสม่ำเสมอ</label>
         <label class="rb"><input type="radio" name="medicine" value="2"> รับยาไม่สม่ำเสมอ</label>
@@ -3238,49 +3245,159 @@ function goStep(n, force){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 // ======= VALIDATE =======
+function markRequiredField(id,ok){
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(ok) el.classList.remove('err');
+  else el.classList.add('err');
+}
+
 function validateStep(n){
   if(n===1){
     if(!pdpaAccepted.register){
       alert('กรุณากดยินยอม/รับทราบประกาศคุ้มครองข้อมูลส่วนบุคคล (PDPA) ก่อนดำเนินการต่อ');
       return false;
     }
+
     const req=['f-prefix','f-fname','f-lname','f-idcard','f-gender','f-unit','f-right'];
     let ok=true;
     req.forEach(function(id){
       const el=document.getElementById(id);
-      if(!el.value.trim()){el.classList.add('err');ok=false;}else el.classList.remove('err');
+      const filled=!!(el&&String(el.value).trim());
+      markRequiredField(id,filled);
+      if(!filled) ok=false;
     });
-    const dobVal = getDOBValue('f-dob-day','f-dob-month','f-dob-year');
-    if(!dobVal){
-      ['f-dob-day','f-dob-month','f-dob-year'].forEach(function(id){document.getElementById(id).classList.add('err');});
-      ok=false;
-    } else {
-      ['f-dob-day','f-dob-month','f-dob-year'].forEach(function(id){document.getElementById(id).classList.remove('err');});
+
+    const dobVal=getDOBValue('f-dob-day','f-dob-month','f-dob-year');
+    ['f-dob-day','f-dob-month','f-dob-year'].forEach(function(id){markRequiredField(id,!!dobVal);});
+    if(!dobVal) ok=false;
+
+    if(!ok){
+      alert('กรุณากรอกข้อมูลช่องที่จำเป็น (*) ให้ครบก่อนทำรายการหน้าถัดไป');
+      return false;
     }
-    if(!ok){alert('กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบ');return false;}
+
     const id=document.getElementById('f-idcard').value;
     if(id.length!==13){
-      document.getElementById('f-idcard').classList.add('err');
+      markRequiredField('f-idcard',false);
       document.getElementById('id-hint').style.color='#ef4444';
       document.getElementById('id-hint').textContent='❌ เลขบัตรประชาชนต้องครบ 13 หลัก';
-      alert('เลขบัตรประชาชนต้องครบ 13 หลัก');return false;
+      alert('เลขบัตรประชาชนต้องครบ 13 หลัก');
+      return false;
     }
     document.getElementById('id-hint').style.color='#16a34a';
     document.getElementById('id-hint').textContent='✓ เลขบัตรประชาชนถูกต้อง';
   }
+
   if(n===2){
-    if(!document.getElementById('f-weight').value||!document.getElementById('f-height').value){
-      alert('กรุณากรอกน้ำหนักและส่วนสูง');return false;
+    const req=['f-weight','f-height','f-bmi','f-waist','f-sbp','f-dbp','f-pulse','f-smoke','f-alcohol','f-exercise'];
+    let ok=true;
+    req.forEach(function(id){
+      const el=document.getElementById(id);
+      const filled=!!(el&&String(el.value).trim());
+      markRequiredField(id,filled);
+      if(!filled) ok=false;
+    });
+
+    if(!ok){
+      alert('กรุณากรอกข้อมูลสุขภาพทุกช่องให้ครบก่อนทำรายการหน้าถัดไป');
+      return false;
+    }
+
+    const waist=parseFloat(document.getElementById('f-waist').value);
+    if(!Number.isFinite(waist)||waist<=55){
+      markRequiredField('f-waist',false);
+      alert('รอบเอวต้องมากกว่า 55 เซนติเมตร (ประมาณ 22 นิ้วขึ้นไป) จึงจะสามารถบันทึกได้');
+      document.getElementById('f-waist').focus();
+      return false;
+    }
+    markRequiredField('f-waist',true);
+
+    const smoke=parseInt(document.getElementById('f-smoke').value,10);
+    if(smoke>=2){
+      for(const id of ['fag1','fag2','fag3']){
+        if(document.getElementById(id).value===''){
+          markRequiredField(id,false);
+          alert('กรุณาตอบแบบประเมินการติดบุหรี่ (Fagerstrom) ให้ครบทุกข้อ');
+          return false;
+        }
+        markRequiredField(id,true);
+      }
+    }
+
+    const alc=parseInt(document.getElementById('f-alcohol').value,10);
+    if(alc>=2){
+      for(const id of ['audit1','audit2','audit3']){
+        if(document.getElementById(id).value===''){
+          markRequiredField(id,false);
+          alert('กรุณาตอบแบบประเมินการดื่มสุรา (AUDIT-C) ให้ครบทุกข้อ');
+          return false;
+        }
+        markRequiredField(id,true);
+      }
     }
   }
+
   if(n===3){
-    if(!document.querySelector('input[name="ncd-none"]:checked')){
-      alert('กรุณาเลือกว่ามีหรือไม่มีโรคประจำตัว');return false;
+    const ncdChoice=document.querySelector('input[name="ncd-none"]:checked');
+    if(!ncdChoice){
+      alert('กรุณาเลือกว่ามีหรือไม่มีโรคประจำตัว');
+      return false;
+    }
+
+    if(document.getElementById('ncd-yes').checked){
+      const selected=[1,2,3,4].some(function(x){return document.getElementById('ncd'+x).checked;});
+      const other=(document.getElementById('f-other-disease').value||'').trim();
+      if(!selected&&!other){
+        alert('กรุณาเลือกโรคประจำตัวอย่างน้อย 1 รายการ หรือระบุโรคประจำตัวอื่น ๆ');
+        return false;
+      }
+      if(!document.querySelector('input[name="medicine"]:checked')){
+        alert('กรุณาระบุประวัติการรับยา');
+        return false;
+      }
+    }
+  }
+
+  if(n===4){
+    for(let i=0;i<9;i++){
+      if(!document.querySelector('input[name="q9_'+i+'"]:checked')){
+        alert('กรุณาตอบแบบคัดกรอง 9Q ให้ครบทั้ง 9 ข้อ');
+        return false;
+      }
+    }
+    for(let i=0;i<8;i++){
+      if(!document.querySelector('input[name="q8_'+i+'"]:checked')){
+        alert('กรุณาตอบแบบประเมิน 8Q ให้ครบทั้ง 8 ข้อ');
+        return false;
+      }
     }
   }
   return true;
 }
 // ======= REGISTRATION VITAL SIGN SCREENING =======
+function checkWaistMinimum(){
+  const el=document.getElementById('f-waist');
+  const hint=document.getElementById('waist-min-hint');
+  if(!el||!hint) return;
+  const waist=parseFloat(el.value);
+  if(el.value===''){
+    el.classList.remove('err');
+    hint.style.color='#9ca3af';
+    hint.textContent='กำหนดให้กรอกมากกว่า 55 cm หรือประมาณ 22 นิ้วขึ้นไป';
+    return;
+  }
+  if(!Number.isFinite(waist)||waist<=55){
+    el.classList.add('err');
+    hint.style.color='#dc2626';
+    hint.textContent='❌ รอบเอวต้องมากกว่า 55 cm จึงจะบันทึกได้';
+  }else{
+    el.classList.remove('err');
+    hint.style.color='#16a34a';
+    hint.textContent='✓ รอบเอวอยู่ในช่วงที่ระบบยอมรับ';
+  }
+}
+
 function checkRegistrationVitals(){
   const sbp=parseFloat(document.getElementById('f-sbp')?.value);
   const dbp=parseFloat(document.getElementById('f-dbp')?.value);
@@ -3426,6 +3543,13 @@ function updateQ8Score(){
 }
 // ======= SUBMIT =======
 function submitForm(){
+  for(const step of [1,2,3,4]){
+    if(!validateStep(step)){
+      if(step!==4) goStep(step,true);
+      return;
+    }
+  }
+
   let q9=0;
   for(let i=0;i<9;i++){const r=document.querySelector('input[name="q9_'+i+'"]:checked');if(r)q9+=parseInt(r.value);}
   let q8=0;
