@@ -750,7 +750,8 @@
   <div id="result-download-section" class="sc p-4" style="margin-top:16px;margin-bottom:12px;text-align:center;">
     <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:5px;">📄 ดาวน์โหลดผลตรวจสุขภาพ</div>
     <div style="font-size:11px;color:#64748b;margin-bottom:10px;line-height:1.6;">สามารถดาวน์โหลดผลตรวจเก็บไว้ในอุปกรณ์ของท่าน เพื่อใช้เป็นข้อมูลหรือประกอบการดำเนินการที่เกี่ยวข้อง</div>
-    <button id="result-pdf-btn" style="width:100%;max-width:460px;font-size:14px;padding:10px 16px;background:#b7202b;color:white;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;" onclick="downloadResultPDF()">📄 ดาวน์โหลดผลตรวจ (PDF)</button>
+    <button id="result-pdf-btn" style="width:100%;max-width:460px;font-size:14px;padding:10px 16px;background:#b7202b;color:white;border:none;border-radius:9px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;" onclick="downloadResultPDF()">📄 ดาวน์โหลดผลตรวจสุขภาพ (PDF)</button>
+    <div style="font-size:10px;color:#9ca3af;margin-top:8px;line-height:1.5;">ดาวน์โหลดผลตรวจสุขภาพเป็นไฟล์ PDF เพื่อบันทึกไว้ในอุปกรณ์และใช้ประกอบการดำเนินการทางราชการ</div>
   </div>
 
   <!-- นัดหมาย / เลื่อนนัด / รับทราบผล อยู่ล่างสุด -->
@@ -1082,12 +1083,20 @@
       เนื่องจากระบบ OCR อาจอ่านตัวเลขคลาดเคลื่อนได้
     </div>
 
-    <div style="margin-bottom:14px;">
+    <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="bs"
               style="font-size:13px;"
               onclick="viewLabReviewSource()">
         👁️ เปิดดูเอกสารต้นฉบับ
       </button>
+      <button type="button"
+              style="font-size:13px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;"
+              onclick="replaceFileFromLabReview()">
+        🔄 แนบ/ถ่ายภาพใหม่
+      </button>
+    </div>
+    <div style="font-size:11px;color:#64748b;margin:-6px 0 14px;line-height:1.6;">
+      หากพบว่าแนบเอกสารผิด สามารถเปลี่ยนไฟล์ได้ทันที ข้อมูล OCR เดิมจะยังไม่ถูกลบจนกว่าจะบันทึกไฟล์ใหม่สำเร็จ และไฟล์ใหม่จะต้องผ่านการตรวจสอบ/คีย์ยืนยันอีกครั้ง
     </div>
 
     <div id="lab-review-fields"></div>
@@ -4716,7 +4725,7 @@ function openPdfModal(id){
       document.getElementById('pdf-current-name').textContent=r.pdfName||'ไฟล์ผลตรวจ';
       document.getElementById('pdf-current-icon').textContent = r.resultFileType==='image' ? '🖼️' : '📄';
     }
-    document.getElementById('pdf-current-date').textContent=r.pdfDate||'';
+    document.getElementById('pdf-current-date').textContent=(r.pdfDate||'')+' • หากไฟล์ผิด ให้เลือก “แนบไฟล์” หรือ “ถ่ายภาพ” ใหม่ด้านล่าง แล้วกดบันทึก';
   } else {
     document.getElementById('pdf-current-wrap').classList.add('hidden');
   }
@@ -5214,28 +5223,27 @@ renderAdmin();
 
 async function replaceResultFile(id){
   const r=records.find(function(x){return x.id===id;});
-  if(!r)return;
+  if(!r) return;
 
   const ok=confirm(
-    'ต้องการเปลี่ยนไฟล์ผลตรวจของ '+[r.prefix,r.fname,r.lname].filter(Boolean).join(' ')+' ใช่หรือไม่?\n\n'
-    +'ผล Lab/NCD เดิมจะถูกยกเลิก และต้องตรวจสอบ OCR ใหม่อีกครั้ง'
+    'ต้องการเปลี่ยนไฟล์/ภาพผลตรวจของ '+[r.prefix,r.fname,r.lname].filter(Boolean).join(' ')+' ใช่หรือไม่?\n\n'
+    +'ไฟล์และข้อมูล OCR เดิมจะยังคงอยู่จนกว่าคุณจะเลือกไฟล์ใหม่และกดบันทึกสำเร็จ\n'
+    +'หลังบันทึกไฟล์ใหม่ ระบบจะอ่าน OCR ใหม่และให้เจ้าหน้าที่ตรวจ/คีย์ยืนยันอีกครั้ง'
   );
-  if(!ok)return;
+  if(!ok) return;
 
-  delete r.lab;
-  delete r.labDraft;
-  delete r.labValidation;
-  delete r.ocrRawText;
-  delete r.ncdAnalysis;
-  delete r.ncdRisk;
-  r.labStatus=null;
-  r.labVerified=false;
-  r.labVerifiedAt=null;
-  r.labVerifiedBy=null;
-  r.labUpdatedBy=null;
-
-  try{await updateRecordInSupabase(r);}catch(e){console.error(e);}
   openPdfModal(id);
+}
+
+function replaceFileFromLabReview(){
+  const id=currentLabReviewId;
+  if(!id) return;
+
+  // ปิดหน้าตรวจ OCR ก่อน แต่ยังไม่ลบ OCR/ไฟล์เดิม
+  document.getElementById('modal-lab-review').classList.add('hidden');
+  currentLabReviewId=null;
+
+  replaceResultFile(id);
 }
 
 async function removePdf(){
@@ -5519,6 +5527,60 @@ function detectImageFormat(dataUrl){
   if(t==='webp') return 'WEBP';
   return 'JPEG';
 }
+async function forceDownloadUrl(url,filename){
+  try{
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const blob=await res.blob();
+    const obj=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=obj;
+    a.download=filename||'ผลตรวจสุขภาพ';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){URL.revokeObjectURL(obj);},1500);
+  }catch(e){
+    // fallback: เปิดไฟล์ในแท็บใหม่ หากเบราว์เซอร์/Storage ไม่อนุญาต force download
+    window.open(url,'_blank');
+  }
+}
+
+async function downloadOriginalResultFile(){
+  if(!currentRecord){alert('ไม่พบข้อมูลผลตรวจ');return;}
+  const r=currentRecord;
+  const btn=document.getElementById('result-original-btn');
+  const oldLabel=btn?btn.textContent:'';
+
+  try{
+    if(btn){btn.disabled=true;btn.textContent='⏳ กำลังเตรียมไฟล์...';}
+
+    if(r.images&&r.images.length){
+      // ดาวน์โหลดรูปต้นฉบับทุกหน้าที่เจ้าหน้าที่แนบ
+      for(let i=0;i<r.images.length;i++){
+        const im=r.images[i];
+        const ext=((im.name||'').split('.').pop()||'jpg').replace(/[^a-zA-Z0-9]/g,'');
+        const filename='ผลตรวจสุขภาพ_'+(r.fname||'')+'_'+(r.lname||'')+'_หน้า'+(i+1)+'.'+ext;
+        await forceDownloadUrl(im.data,filename);
+      }
+      return;
+    }
+
+    if(r.pdfData){
+      const ext=r.resultFileType==='image'
+        ? (((r.pdfName||'').split('.').pop())||'jpg')
+        : 'pdf';
+      const filename='ผลตรวจสุขภาพ_'+(r.fname||'')+'_'+(r.lname||'')+'.'+ext;
+      await forceDownloadUrl(r.pdfData,filename);
+      return;
+    }
+
+    alert('ยังไม่มีเอกสารผลตรวจที่เจ้าหน้าที่แนบในระบบ');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=oldLabel;}
+  }
+}
+
 async function downloadResultPDF(){
   if(!currentRecord){alert('ไม่พบข้อมูลผลตรวจ');return;}
   const r=currentRecord;
@@ -5528,7 +5590,8 @@ async function downloadResultPDF(){
   const origLabel=btn?btn.textContent:'';
   if(!imgList){
     if(r.resultFileType==='pdf' && r.pdfData){
-      window.open(r.pdfData,'_blank');
+      const fname='ผลตรวจสุขภาพ_'+(r.fname||'')+'_'+(r.lname||'')+'.pdf';
+      await forceDownloadUrl(r.pdfData,fname);
       return;
     }
     alert('ยังไม่มีรูปภาพผลตรวจแนบในระบบ');
