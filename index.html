@@ -3233,8 +3233,9 @@ function apptResponseFormHTML(){
     +'<label class="rb"><input type="radio" name="appt-resp-action" value="reschedule" onchange="toggleApptRespDate()"> 🔄 ขอเลื่อนนัดหมาย</label>'
     +'</div>'
     +'<div id="appt-resp-date-wrap" class="hidden" style="margin-bottom:12px;">'
-    +'<label class="fl">ต้องการเลื่อนไปวันที่</label>'
-    +'<input type="date" id="appt-resp-date" class="fi">'
+    +'<label class="fl">ต้องการเลื่อนไปวันที่ (ปี พ.ศ.)</label>'
+    +'<input type="hidden" id="appt-resp-date" value="">'
+    +'<input type="text" id="appt-resp-date-display" class="fi" readonly placeholder="เลือกวันที่ต้องการเลื่อนนัด" style="cursor:pointer;background:#fff;" onclick="openThaiCalendar(\'appt-resp-date\',\'appt-resp-date-display\')">'
     +'</div>'
     +'<div id="appt-resp-err" class="hidden" style="background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;"></div>'
     +'<button class="bp" style="font-size:13px;padding:8px 18px;" onclick="submitApptResponse()">ส่งคำตอบ</button>';
