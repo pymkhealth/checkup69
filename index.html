@@ -339,6 +339,8 @@
     <button class="bs" style="font-size:13px;" onclick="bpHomeLogout()">ออกจากหน้านี้</button>
   </div>
 
+  <div id="bp-assigned-period" class="hidden sc p-4 mb-4" style="background:#fff7ed;border-color:#fed7aa;"></div>
+
   <details class="sc p-4 mb-4" open>
     <summary style="cursor:pointer;font-size:14px;font-weight:800;color:#374151;">📌 แนวทางการวัดความดันโลหิตที่บ้าน</summary>
     <div style="font-size:13px;color:#374151;line-height:1.8;margin-top:12px;">
@@ -356,7 +358,11 @@
   <div class="sc p-4 mb-4">
     <h3 style="font-size:14px;font-weight:800;color:#374151;margin:0 0 12px;">✍️ บันทึกประจำวัน</h3>
     <div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:end;margin-bottom:14px;">
-      <div><label class="fl">วันที่</label><input type="date" id="bp-record-date" class="fi"></div>
+      <div>
+        <label class="fl">วันที่ (ปี พ.ศ.)</label>
+        <input type="hidden" id="bp-record-date" value="">
+        <input type="text" id="bp-record-date-display" class="fi" readonly placeholder="เลือกวันที่บันทึก" style="cursor:pointer;background:#fff;" onclick="openThaiCalendar('bp-record-date','bp-record-date-display')">
+      </div>
       <div style="font-size:12px;color:#64748b;">บันทึก 1 รายการต่อวัน และกลับมาแก้ไขข้อมูลของวันเดิมได้</div>
     </div>
     <div style="overflow-x:auto;">
@@ -386,6 +392,19 @@
   <div class="sc p-4 mb-4">
     <h3 style="font-size:14px;font-weight:800;color:#374151;margin:0 0 12px;">📋 ประวัติที่ท่านบันทึก</h3>
     <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:920px;font-size:11px;"><thead><tr style="background:#991b1b;color:white;"><th style="padding:8px;">วันที่</th><th style="padding:8px;">เช้า 1</th><th style="padding:8px;">เช้า 2</th><th style="padding:8px;">ก่อนนอน 1</th><th style="padding:8px;">ก่อนนอน 2</th><th style="padding:8px;">สถานะ</th></tr></thead><tbody id="bp-history-body"></tbody></table></div>
+  </div>
+
+  <div class="sc p-4 mb-4">
+    <h3 style="font-size:14px;font-weight:800;color:#374151;margin:0 0 6px;">🖼️ ดาวน์โหลดภาพสรุปผล 7 วัน</h3>
+    <p style="font-size:12px;color:#64748b;margin:0 0 12px;">เลือกวันแรกของช่วงที่ต้องการ ระบบจะสรุปข้อมูลต่อเนื่อง 7 วันเป็นภาพ PNG ให้ดาวน์โหลดเก็บไว้ในอุปกรณ์</p>
+    <div style="display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:10px;align-items:end;">
+      <div>
+        <label class="fl">วันเริ่มต้น (ปี พ.ศ.)</label>
+        <input type="hidden" id="bp-download-start" value="">
+        <input type="text" id="bp-download-start-display" class="fi" readonly placeholder="เลือกวันเริ่มต้น" style="cursor:pointer;background:#fff;" onclick="openThaiCalendar('bp-download-start','bp-download-start-display')">
+      </div>
+      <button class="bg" onclick="downloadBp7DayImage()">⬇ ดาวน์โหลดภาพผลการบันทึก 7 วัน</button>
+    </div>
   </div>
 </div>
 
@@ -1089,7 +1108,14 @@
         <label class="cb"><input type="checkbox" name="appt-instruction" value="urine"> เก็บปัสสาวะอีกครั้ง</label>
         <label class="cb"><input type="checkbox" name="appt-instruction" value="stool"> เก็บอุจจาระเพิ่มเติม</label>
         <label class="cb"><input type="checkbox" name="appt-instruction" value="xray"> X-ray ซ้ำ</label>
-        <label class="cb"><input type="checkbox" name="appt-instruction" value="bp7days"> วัดความดันโลหิต 7 วันก่อนพบแพทย์</label>
+        <label class="cb"><input type="checkbox" name="appt-instruction" value="bp7days" onchange="toggleBp7DateField()"> วัดความดันโลหิต 7 วันก่อนพบแพทย์</label>
+      </div>
+
+      <div id="appt-bp7-date-wrap" class="hidden" style="margin-top:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:11px 12px;">
+        <label class="fl">วันเริ่มวัดความดัน 7 วัน (ปี พ.ศ.) <span style="color:red">*</span></label>
+        <input type="hidden" id="appt-bp7-start-date" value="">
+        <input type="text" id="appt-bp7-start-date-display" class="fi" readonly placeholder="เลือกวันเริ่มวัดความดัน" style="cursor:pointer;background:#fff;" onclick="openThaiCalendar('appt-bp7-start-date','appt-bp7-start-date-display')">
+        <div id="appt-bp7-range-note" style="font-size:11px;color:#9a3412;margin-top:6px;line-height:1.5;"></div>
       </div>
     </div>
     <div id="appt-attended-wrap" style="margin-bottom:18px;">
@@ -2055,6 +2081,119 @@ function showPage(p){
 // ======= BP HOME MONITORING =======
 let bpPatient=null, bpCredentials=null, bpOwnRecords=[], bpAdminRecords=[];
 
+
+function addDaysIso(iso,days){
+  if(!iso) return '';
+  const parts=iso.split('-').map(Number);
+  const d=new Date(parts[0],parts[1]-1,parts[2]);
+  d.setDate(d.getDate()+days);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function renderBpAssignedPeriod(){
+  const box=document.getElementById('bp-assigned-period');
+  if(!box || !bpPatient){return;}
+  const appt=bpPatient.appointment;
+  const assigned=appt && appt.type==='appt'
+    && Array.isArray(appt.instructions)
+    && appt.instructions.includes('bp7days')
+    && appt.bpMonitorStartDate;
+
+  if(!assigned){
+    box.classList.add('hidden');
+    box.innerHTML='';
+    return;
+  }
+
+  const start=appt.bpMonitorStartDate;
+  const end=addDaysIso(start,6);
+  box.classList.remove('hidden');
+  box.innerHTML=
+    '<div style="font-size:13px;font-weight:800;color:#9a3412;margin-bottom:4px;">📅 ช่วงวันที่เจ้าหน้าที่กำหนดให้วัดความดันโลหิต</div>'
+    +'<div style="font-size:18px;font-weight:800;color:#7f1621;">'+ceDateToBEDisplay(start)+' – '+ceDateToBEDisplay(end)+'</div>'
+    +'<div style="font-size:12px;color:#7c2d12;margin-top:5px;line-height:1.6;">กรุณาบันทึกความดันช่วงเช้าและก่อนนอนให้ครบตามวันที่กำหนด เพื่อใช้ประกอบการพบแพทย์'
+    +(appt.date?' โดยมีวันนัดพบแพทย์วันที่ <b>'+ceDateToBEDisplay(appt.date)+'</b>':'')
+    +'</div>';
+}
+
+function buildBp7DayImageHtml(startIso){
+  const days=[];
+  for(let i=0;i<7;i++){
+    const iso=addDaysIso(startIso,i);
+    const r=bpOwnRecords.find(function(x){return x.record_date===iso;})||{};
+    days.push({iso:iso,r:r});
+  }
+
+  const fullName=bpPatient
+    ? [bpPatient.prefix,bpPatient.fname,bpPatient.lname].filter(Boolean).join(' ')
+    : '';
+
+  const rows=days.map(function(x,i){
+    const r=x.r;
+    return '<tr>'
+      +'<td style="border:1px solid #d1d5db;padding:9px;text-align:center;">'+(i+1)+'</td>'
+      +'<td style="border:1px solid #d1d5db;padding:9px;white-space:nowrap;">'+ceDateToBEDisplay(x.iso)+'</td>'
+      +'<td style="border:1px solid #d1d5db;padding:9px;text-align:center;">'+bpReadingText(r.morning_sys1??null,r.morning_dia1??null,r.morning_pulse1??null)+'</td>'
+      +'<td style="border:1px solid #d1d5db;padding:9px;text-align:center;">'+bpReadingText(r.morning_sys2??null,r.morning_dia2??null,r.morning_pulse2??null)+'</td>'
+      +'<td style="border:1px solid #d1d5db;padding:9px;text-align:center;">'+bpReadingText(r.evening_sys1??null,r.evening_dia1??null,r.evening_pulse1??null)+'</td>'
+      +'<td style="border:1px solid #d1d5db;padding:9px;text-align:center;">'+bpReadingText(r.evening_sys2??null,r.evening_dia2??null,r.evening_pulse2??null)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  return '<div style="width:1180px;background:#fff;padding:34px;font-family:Sarabun,Tahoma,sans-serif;color:#1f2937;">'
+    +'<div style="border-bottom:4px solid #991b1b;padding-bottom:16px;margin-bottom:18px;">'
+    +'<div style="font-size:28px;font-weight:800;color:#7f1621;">สรุปการวัดความดันโลหิตที่บ้าน 7 วัน</div>'
+    +'<div style="font-size:18px;font-weight:700;margin-top:5px;">'+escapeSimple(fullName)+'</div>'
+    +(bpPatient&&bpPatient.hn?'<div style="font-size:15px;color:#64748b;">HN: '+escapeSimple(bpPatient.hn)+'</div>':'')
+    +'<div style="font-size:16px;color:#475569;margin-top:5px;">ช่วงวันที่ '+ceDateToBEDisplay(startIso)+' – '+ceDateToBEDisplay(addDaysIso(startIso,6))+'</div>'
+    +'</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:14px;">'
+    +'<thead><tr style="background:#991b1b;color:white;">'
+    +'<th style="border:1px solid #7f1d1d;padding:10px;">วันที่</th>'
+    +'<th style="border:1px solid #7f1d1d;padding:10px;">วัน/เดือน/ปี</th>'
+    +'<th style="border:1px solid #7f1d1d;padding:10px;">เช้า ครั้งที่ 1</th>'
+    +'<th style="border:1px solid #7f1d1d;padding:10px;">เช้า ครั้งที่ 2</th>'
+    +'<th style="border:1px solid #7f1d1d;padding:10px;">ก่อนนอน ครั้งที่ 1</th>'
+    +'<th style="border:1px solid #7f1d1d;padding:10px;">ก่อนนอน ครั้งที่ 2</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div style="font-size:13px;color:#64748b;margin-top:14px;">ค่าที่แสดง: ความดันตัวบน/ตัวล่าง (mmHg) · P = ชีพจร (ครั้ง/นาที)</div>'
+    +'<div style="font-size:13px;color:#64748b;margin-top:4px;">โรงพยาบาลค่ายพระยอดเมืองขวาง</div>'
+    +'</div>';
+}
+
+async function downloadBp7DayImage(){
+  if(!bpPatient){alert('กรุณาเข้าสู่ระบบก่อน');return;}
+  const start=document.getElementById('bp-download-start').value;
+  if(!start){alert('กรุณาเลือกวันเริ่มต้นของช่วง 7 วัน');return;}
+  if(typeof html2canvas!=='function'){alert('ไม่พบระบบสร้างภาพ กรุณารีเฟรชหน้าเว็บแล้วลองใหม่');return;}
+
+  const capture=document.createElement('div');
+  capture.style.position='fixed';
+  capture.style.left='-10000px';
+  capture.style.top='0';
+  capture.style.zIndex='-1';
+  capture.innerHTML=buildBp7DayImageHtml(start);
+  document.body.appendChild(capture);
+
+  try{
+    const canvas=await html2canvas(capture.firstElementChild,{
+      scale:1.6,
+      backgroundColor:'#ffffff',
+      useCORS:true,
+      logging:false
+    });
+    const a=document.createElement('a');
+    a.download='ผลความดันโลหิต_7วัน_'+start+'_ถึง_'+addDaysIso(start,6)+'.png';
+    a.href=canvas.toDataURL('image/png');
+    a.click();
+  }catch(e){
+    console.error(e);
+    alert('สร้างภาพไม่สำเร็จ: '+e.message);
+  }finally{
+    capture.remove();
+  }
+}
+
 function bpValue(id){const e=document.getElementById(id);if(!e||e.value==='')return null;const n=parseInt(e.value,10);return Number.isFinite(n)?n:null;}
 function bpReadingText(sys,dia,pulse){if(sys===null&&dia===null&&pulse===null)return '-';return (sys??'-')+'/'+(dia??'-')+' mmHg · P '+(pulse??'-');}
 function bpAlert(r){return [[r.morning_sys1,r.morning_dia1],[r.morning_sys2,r.morning_dia2],[r.evening_sys1,r.evening_dia1],[r.evening_sys2,r.evening_dia2]].some(function(p){return (p[0]!==null&&p[0]>180)||(p[1]!==null&&p[1]>110);});}
@@ -2069,7 +2208,18 @@ async function bpHomeLogin(){
     const found=data||[];if(!found.length){err.textContent='ไม่พบข้อมูล หรือเลขบัตร/วันเกิดไม่ถูกต้อง';err.classList.remove('hidden');return;}
     bpPatient=found[found.length-1];bpCredentials={idcard:id,dob:dob};
     document.getElementById('bp-patient-name').textContent=[bpPatient.prefix,bpPatient.fname,bpPatient.lname].filter(Boolean).join(' ')+(bpPatient.hn?' | HN '+bpPatient.hn:'');
-    document.getElementById('bp-record-date').value=new Date().toISOString().slice(0,10);
+
+    const todayIso=new Date().toISOString().slice(0,10);
+    let initialBpDate=todayIso;
+    const appt=bpPatient.appointment;
+    if(appt && Array.isArray(appt.instructions) && appt.instructions.includes('bp7days') && appt.bpMonitorStartDate){
+      const endIso=addDaysIso(appt.bpMonitorStartDate,6);
+      if(todayIso<appt.bpMonitorStartDate || todayIso>endIso) initialBpDate=appt.bpMonitorStartDate;
+    }
+    document.getElementById('bp-record-date').value=initialBpDate;
+    document.getElementById('bp-record-date-display').value=ceDateToBEDisplay(initialBpDate);
+
+    renderBpAssignedPeriod();
     await loadOwnBpRecords();showPage('bp-home');
   }catch(e){err.textContent='เข้าสู่ระบบไม่ได้: '+e.message;err.classList.remove('hidden');}
 }
@@ -2100,7 +2250,10 @@ async function saveBpHomeRecord(){
   try{const {error}=await window._sb.rpc('upsert_own_bp_record',args);if(error)throw error;msg.className='';msg.style.background='#dcfce7';msg.style.color='#166534';msg.textContent='✅ บันทึกข้อมูลเรียบร้อยแล้ว';await loadOwnBpRecords();}
   catch(e){msg.className='';msg.style.background='#fee2e2';msg.style.color='#991b1b';msg.textContent='❌ บันทึกไม่สำเร็จ: '+e.message;}
 }
-document.addEventListener('change',function(e){if(e.target&&e.target.id==='bp-record-date')loadBpDateIntoForm(e.target.value);});
+document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='bp-record-date') loadBpDateIntoForm(e.target.value);
+  if(e.target&&e.target.id==='appt-bp7-start-date') updateBp7DateRangeNote();
+});
 
 async function loadBpAdminRecords(){
   if(!currentAdmin)return;
@@ -2838,7 +2991,11 @@ function renderThaiCal(){
 }
 function thaiCalPick(iso){
   thaiCalSelected = iso;
-  if(thaiCalTargetHidden) document.getElementById(thaiCalTargetHidden).value = iso;
+  if(thaiCalTargetHidden){
+    const hiddenEl=document.getElementById(thaiCalTargetHidden);
+    hiddenEl.value = iso;
+    hiddenEl.dispatchEvent(new Event('change',{bubbles:true}));
+  }
   if(thaiCalTargetDisplay) document.getElementById(thaiCalTargetDisplay).value = ceDateToBEDisplay(iso);
   closeThaiCalendar();
 }
@@ -3805,6 +3962,9 @@ function buildApptInstructionListHTML(appt){
   return '<div style="margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.12);border-radius:8px;">'
     +'<div style="font-size:12px;font-weight:700;color:#fde68a;margin-bottom:5px;">การปฏิบัติตัวก่อนมาพบแพทย์</div>'
     +labels.map(function(x){ return '<div style="font-size:12px;color:#fff;line-height:1.7;">• '+escapeSimple(x)+'</div>'; }).join('')
+    +(appt.bpMonitorStartDate
+      ?'<div style="font-size:12px;color:#fde68a;line-height:1.7;margin-top:4px;"><b>ช่วงวัดความดัน:</b> '+ceDateToBEDisplay(appt.bpMonitorStartDate)+' – '+ceDateToBEDisplay(addDaysIso(appt.bpMonitorStartDate,6))+'</div>'
+      :'')
     +'</div>';
 }
 
@@ -3814,7 +3974,35 @@ function buildApptInstructionCardHTML(appt){
   return '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #f0d896;">'
     +'<div style="font-size:12px;color:#92600b;font-weight:700;margin-bottom:6px;">การปฏิบัติตัวก่อนมาพบแพทย์</div>'
     +labels.map(function(x){ return '<div style="font-size:13px;color:#374151;line-height:1.8;">☑ '+escapeSimple(x)+'</div>'; }).join('')
+    +(appt.bpMonitorStartDate
+      ?'<div style="margin-top:7px;padding:8px 10px;background:#fff7ed;border-radius:7px;font-size:12px;color:#9a3412;"><b>ช่วงวัดความดัน:</b> '+ceDateToBEDisplay(appt.bpMonitorStartDate)+' – '+ceDateToBEDisplay(addDaysIso(appt.bpMonitorStartDate,6))+'</div>'
+      :'')
     +'</div>';
+}
+
+
+function toggleBp7DateField(){
+  const cb=document.querySelector('input[name="appt-instruction"][value="bp7days"]');
+  const wrap=document.getElementById('appt-bp7-date-wrap');
+  if(!wrap) return;
+  const show=!!(cb&&cb.checked);
+  wrap.classList.toggle('hidden',!show);
+  if(!show){
+    document.getElementById('appt-bp7-start-date').value='';
+    document.getElementById('appt-bp7-start-date-display').value='';
+    document.getElementById('appt-bp7-range-note').textContent='';
+  }else{
+    updateBp7DateRangeNote();
+  }
+}
+
+function updateBp7DateRangeNote(){
+  const start=document.getElementById('appt-bp7-start-date')?.value||'';
+  const note=document.getElementById('appt-bp7-range-note');
+  if(!note) return;
+  note.innerHTML=start
+    ? 'กำหนดให้วัดตั้งแต่ <b>'+ceDateToBEDisplay(start)+'</b> ถึง <b>'+ceDateToBEDisplay(addDaysIso(start,6))+'</b> (รวม 7 วัน)'
+    : 'กรุณาเลือกวันแรกที่ต้องการให้ผู้รับบริการเริ่มวัดความดัน';
 }
 
 function openAppt(id){
@@ -3835,6 +4023,9 @@ function openAppt(id){
     document.querySelectorAll('input[name="appt-instruction"]').forEach(function(el){
       el.checked = savedInstructions.includes(el.value);
     });
+
+    document.getElementById('appt-bp7-start-date').value=appt.bpMonitorStartDate||'';
+    document.getElementById('appt-bp7-start-date-display').value=appt.bpMonitorStartDate?ceDateToBEDisplay(appt.bpMonitorStartDate):'';
   } else {
     document.querySelector('input[name="appt-type"][value="none"]').checked=true;
     document.getElementById('appt-date-input').value='';
@@ -3842,8 +4033,11 @@ function openAppt(id){
     document.getElementById('appt-note-input').value='';
     document.getElementById('appt-attended-input').checked=false;
     document.querySelectorAll('input[name="appt-instruction"]').forEach(function(el){ el.checked=false; });
+    document.getElementById('appt-bp7-start-date').value='';
+    document.getElementById('appt-bp7-start-date-display').value='';
   }
   toggleApptDate();
+  toggleBp7DateField();
   document.getElementById('modal-appt').classList.remove('hidden');
 }
 function toggleApptDate(){
@@ -3853,6 +4047,8 @@ function toggleApptDate(){
   document.getElementById('appt-note-wrap').style.display=show?'':'none';
   document.getElementById('appt-instruction-wrap').style.display=show?'':'none';
   document.getElementById('appt-attended-wrap').style.display=show?'':'none';
+  if(show) toggleBp7DateField();
+  else document.getElementById('appt-bp7-date-wrap').classList.add('hidden');
 }
 function closeAppt(){document.getElementById('modal-appt').classList.add('hidden');}
 function saveAppt(){
@@ -3865,11 +4061,22 @@ function saveAppt(){
     if(!d){alert('กรุณาเลือกวันที่นัด');return;}
     const instructions = Array.from(document.querySelectorAll('input[name="appt-instruction"]:checked'))
       .map(function(el){ return el.value; });
+
+    let bpMonitorStartDate=null;
+    if(instructions.includes('bp7days')){
+      bpMonitorStartDate=document.getElementById('appt-bp7-start-date').value;
+      if(!bpMonitorStartDate){
+        alert('กรุณาเลือกวันเริ่มวัดความดันโลหิต 7 วัน');
+        return;
+      }
+    }
+
     r.appointment={
       type:'appt',
       date:d,
       note:document.getElementById('appt-note-input').value.trim(),
       instructions:instructions,
+      bpMonitorStartDate:bpMonitorStartDate,
       attended:document.getElementById('appt-attended-input').checked,
       updatedBy:getCurrentAdminAudit()
     };
