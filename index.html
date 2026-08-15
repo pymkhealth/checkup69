@@ -1630,27 +1630,28 @@ window.renderAdminNcdDashboard = async function(records) {
     else if (r.ncdRisk === 'medium') stats.ncdMedium++;
     if (Number.isFinite(parseFloat(r.cvdRiskScore))) stats.cvdHas++;
   });
-  function statCard(icon, label, val, total, color, onclick) {
+  function statCard(icon, label, val, total, color, groupType, groupKey, groupTitle) {
     const p = total > 0 ? Math.round(val / total * 100) : 0;
-    return `<div onclick="${onclick||''}" style="background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:.875rem 1rem;${onclick?'cursor:pointer;':''}">
+    const clickable = !!groupType;
+    return `<div ${clickable?`data-group-type="${groupType}" data-group-key="${groupKey||''}" data-group-title="${groupTitle||label}" onclick="openGroupListFromCard(this)"`:''} style="background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:.875rem 1rem;${clickable?'cursor:pointer;':''}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem"><span style="font-size:20px">${icon}</span><span style="font-size:13px;color:#888">${label}</span></div>
       <div style="font-size:26px;font-weight:500;color:${color}">${val} <span style="font-size:14px;font-weight:400;color:#888">คน</span></div>
       <div style="height:5px;background:#ebebeb;border-radius:4px;margin-top:.5rem;overflow:hidden"><div style="height:100%;width:${p}%;background:${color};border-radius:4px;transition:width .6s"></div></div>
-      <div style="font-size:11px;color:#aaa;margin-top:3px">${p}% จาก ${total} คนทั้งหมด${onclick?' · กดดูรายชื่อ':''}</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">${p}% จาก ${total} คนทั้งหมด${clickable?' · กดดูรายชื่อ':''}</div>
     </div>`;
   }
   el.innerHTML = `
     <div class="sc p-4 mb-2">
       <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 12px;">📊 สรุปภาพรวมสุขภาพ</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
-        ${statCard('🏥','ผู้รับบริการทั้งหมด',stats.total,stats.total,'#185FA5',`openGroupList('all','','ผู้รับบริการทั้งหมด')`)}
-        ${statCard('📄','มีผลตรวจแนบ',stats.hasPdf,stats.total,'#639922',`openGroupList('hasPdf','','ผู้มีผลตรวจแนบ')`)}
-        ${statCard('🔴','เสี่ยง NCDs สูง',stats.ncdHigh,stats.total,'#E24B4A',`openGroupList('ncdRisk','high','เสี่ยง NCDs สูง')`)}
-        ${statCard('🟡','เสี่ยง NCDs ปานกลาง',stats.ncdMedium,stats.total,'#EF9F27',`openGroupList('ncdRisk','medium','เสี่ยง NCDs ปานกลาง')`)}
-        ${statCard('❤️','มี CVD Risk Score',stats.cvdHas,stats.total,'#be123c',`openGroupList('cvdHas','','ผู้ที่มี CVD Risk Score')`)}
-        ${statCard('⚖️','BMI เกิน 25',stats.bmiOver,stats.total,'#854F0B',`openGroupList('bmiOver','','BMI เกิน 25')`)}
-        ${statCard('🍺','ดื่มสุราเป็นประจำ',stats.alcohol,stats.total,'#6C3483',`openGroupList('alcohol','','ดื่มสุราเป็นประจำ')`)}
-        ${statCard('🚬','สูบบุหรี่เป็นประจำ',stats.smoke,stats.total,'#555555',`openGroupList('smoke','','สูบบุหรี่เป็นประจำ')`)}
+        ${statCard('🏥','ผู้รับบริการทั้งหมด',stats.total,stats.total,'#185FA5','all','','ผู้รับบริการทั้งหมด')}
+        ${statCard('📄','มีผลตรวจแนบ',stats.hasPdf,stats.total,'#639922','hasPdf','','ผู้มีผลตรวจแนบ')}
+        ${statCard('🔴','เสี่ยง NCDs สูง',stats.ncdHigh,stats.total,'#E24B4A','ncdRisk','high','เสี่ยง NCDs สูง')}
+        ${statCard('🟡','เสี่ยง NCDs ปานกลาง',stats.ncdMedium,stats.total,'#EF9F27','ncdRisk','medium','เสี่ยง NCDs ปานกลาง')}
+        ${statCard('❤️','มี CVD Risk Score',stats.cvdHas,stats.total,'#be123c','cvdHas','','ผู้ที่มี CVD Risk Score')}
+        ${statCard('⚖️','BMI เกิน 25',stats.bmiOver,stats.total,'#854F0B','bmiOver','','BMI เกิน 25')}
+        ${statCard('🍺','ดื่มสุราเป็นประจำ',stats.alcohol,stats.total,'#6C3483','alcohol','','ดื่มสุราเป็นประจำ')}
+        ${statCard('🚬','สูบบุหรี่เป็นประจำ',stats.smoke,stats.total,'#555555','smoke','','สูบบุหรี่เป็นประจำ')}
       </div>
     </div>`;
 };
@@ -2074,6 +2075,14 @@ function renderBpAdminTable(){
 
 // ======= GROUP LISTS =======
 function closeGroupList(){document.getElementById('modal-group-list').classList.add('hidden');}
+function openGroupListFromCard(el){
+  if(!el) return;
+  openGroupList(
+    el.getAttribute('data-group-type') || '',
+    el.getAttribute('data-group-key') || '',
+    el.getAttribute('data-group-title') || 'รายชื่อ'
+  );
+}
 function openGroupRecord(btn){const id=btn.getAttribute('data-id');closeGroupList();viewAdmin(id);}
 function openGroupList(type,key,title){
   let list=[];
@@ -3287,9 +3296,9 @@ function renderAdmin(){
     ['🟢 สุขภาพดี',healthy,'#dcfce7','#166534'],
     ['🟡 กลุ่มเสี่ยง*',atRisk,'#fef9c3','#854d0e'],
     ['🔴 พบแพทย์',needDoctor,'#fee2e2','#991b1b'],
-  ].map(function(x){
+  ].map(function(x,i){
     const keys=['green','yellow','red'],titles=['สุขภาพดี','กลุ่มเสี่ยง','พบแพทย์'];
-    return '<div onclick="openGroupList(\'health\',\''+keys[i]+'\',\''+titles[i]+'\')" style="background:'+x[2]+';border-radius:10px;padding:10px;text-align:center;cursor:pointer;">'
+    return '<div data-group-type="health" data-group-key="'+keys[i]+'" data-group-title="'+titles[i]+'" onclick="openGroupListFromCard(this)" style="background:'+x[2]+';border-radius:10px;padding:10px;text-align:center;cursor:pointer;">'
       +'<div style="font-size:11px;color:'+x[3]+';font-weight:600;margin-bottom:4px;">'+x[0]+'</div>'
       +'<div style="font-size:26px;font-weight:800;color:'+x[3]+';">'+x[1]+'</div><div style="font-size:9px;color:'+x[3]+';opacity:.65;">กดดูรายชื่อ</div></div>';
   }).join('')+'<div style="grid-column:span 3;font-size:10px;color:#9ca3af;">*ผิดปกติแต่ยังไม่มีนัด</div>';
@@ -3304,9 +3313,9 @@ function renderAdmin(){
     ['ปกติ','18.5-22.9',bmiGroups[1],'#dcfce7','#166534'],
     ['ท้วม','23-24.9',bmiGroups[2],'#fff7ed','#c2410c'],
     ['อ้วน','≥ 25',bmiGroups[3],'#fee2e2','#991b1b'],
-  ].map(function(x){
+  ].map(function(x,i){
     const keys=['under','normal','over','obese'];
-    return '<div onclick="openGroupList(\'bmi\',\''+keys[i]+'\',\'กลุ่ม BMI: '+x[0]+'\')" style="background:'+x[3]+';border-radius:10px;padding:8px;text-align:center;cursor:pointer;">'
+    return '<div data-group-type="bmi" data-group-key="'+keys[i]+'" data-group-title="กลุ่ม BMI: '+x[0]+'" onclick="openGroupListFromCard(this)" style="background:'+x[3]+';border-radius:10px;padding:8px;text-align:center;cursor:pointer;">'
       +'<div style="font-size:11px;font-weight:700;color:'+x[4]+';margin-bottom:1px;">'+x[0]+'</div>'
       +'<div style="font-size:10px;color:'+x[4]+';opacity:.7;margin-bottom:4px;">BMI '+x[1]+'</div>'
       +'<div style="font-size:22px;font-weight:800;color:'+x[4]+';">'+x[2]+'</div><div style="font-size:9px;color:'+x[4]+';opacity:.6;">กดดูรายชื่อ</div></div>';
