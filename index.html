@@ -942,6 +942,9 @@
       </div>
     </div>
     <div style="font-size:11px;color:#9ca3af;text-align:center;margin-bottom:6px;">รองรับไฟล์ .pdf, .jpg, .png ขนาดไม่เกิน 10MB ต่อไฟล์ — เลือกได้หลายรูป เช่น ผลตรวจ 1-2 หน้า</div>
+    <div id="scan-mode-note" class="hidden" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:8px 10px;margin:8px 0 10px;font-size:11px;line-height:1.5;text-align:center;">
+      📄 โหมดสแกนเอกสาร: ระบบจะครอปขอบ ปรับภาพให้อ่านง่าย และรวมภาพที่ถ่ายเป็นไฟล์ PDF อัตโนมัติ
+    </div>
     <div id="pdf-preview-wrap" class="hidden" style="margin-top:8px;padding:10px 14px;background:#fdf3e0;border:1px solid #f0d896;border-radius:10px;display:flex;align-items:center;gap:10px;">
       <img id="pdf-preview-thumb" class="hidden" style="width:42px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;">
       <span id="pdf-preview-icon" style="font-size:22px;">📄</span>
@@ -3325,7 +3328,9 @@ function showThankYouPage(r){
     el.innerHTML =
       '<div style="width:72px;height:72px;background:#fdf3e0;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">'
       +'<span style="font-size:36px;">📅</span></div>'
-      +'<h2 style="font-size:21px;font-weight:800;color:#7f1621;margin:0 0 4px;">ใบนัดหมาย</h2>'
+      +'<h2 style="font-size:22px;font-weight:800;color:#166534;margin:0 0 5px;">ขอบคุณที่ใช้บริการ</h2>'
+      +'<p style="font-size:14px;color:#64748b;margin:0 0 12px;">ท่านได้รับทราบผลตรวจสุขภาพประจำปีเรียบร้อยแล้ว</p>'
+      +'<div style="font-size:18px;font-weight:800;color:#7f1621;margin:0 0 4px;">📅 ใบนัดหมาย</div>'
       +'<p style="font-size:13px;color:#64748b;margin:0 0 16px;">กรุณาตรวจสอบวันนัดหมายและรายละเอียดก่อนออกจากหน้านี้</p>'
       +'<div style="background:#fffaf0;border:2px solid #f0d896;border-radius:12px;padding:18px;margin:0 0 16px;text-align:left;">'
       +'<div style="font-size:12px;color:#92600b;font-weight:700;margin-bottom:5px;">วันที่นัดหมาย</div>'
@@ -3433,8 +3438,6 @@ function renderResult(r){
        +(r.cvdRiskNote?'<div style="font-size:12px;color:#475569;margin-top:8px;">หมายเหตุ: '+escapeSimple(r.cvdRiskNote)+'</div>':'')
        +'</div>'
       :'')
-    +buildAppointmentHTML(r)
-    +buildAppointmentResponseHTML(r)
     +buildLifestyleAdviceHTML(r);
   const attSection = document.getElementById('attached-file-section');
   const attContent = document.getElementById('attached-file-content');
@@ -3489,7 +3492,10 @@ function renderResult(r){
   // ปุ่มรับทราบผลอยู่ล่างสุด หลังข้อมูล ผลแนบ และผล Lab ทั้งหมด
   const ackSection = document.getElementById('acknowledge-result-section');
   if(ackSection){
-    ackSection.innerHTML = buildAcknowledgeHTML(r);
+    ackSection.innerHTML =
+      buildAppointmentHTML(r)
+      +buildAppointmentResponseHTML(r)
+      +buildAcknowledgeHTML(r);
   }
 }
 // ======= ADMIN RENDER =======
@@ -3802,6 +3808,7 @@ function toggleAttended(id){
 let currentPdfModalId = null;
 let pendingImages = [];
 let pendingIdentityCheck = null;
+let pendingCaptureMode = null;
 let pendingPdfBase64 = null;
 let pendingPdfName = null;
 let pendingPdfType = null;
@@ -4061,7 +4068,7 @@ function renderPdfIdentityCheck(result){
 
 function openPdfModal(id){
   currentPdfModalId=id;
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[]; pendingIdentityCheck=null;
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[]; pendingIdentityCheck=null; pendingCaptureMode=null;
   const r=records.find(function(x){return x.id===id;});
   if(!r)return;
   document.getElementById('pdf-person-name').textContent=r.prefix+' '+r.fname+' '+r.lname;
@@ -4071,6 +4078,8 @@ function openPdfModal(id){
     +(r.idcard?' &nbsp;|&nbsp; เลขบัตร: <b>*********'+escapeSimple(String(r.idcard).slice(-4))+'</b>':'');
   const idCheckEl=document.getElementById('pdf-identity-check');
   if(idCheckEl){idCheckEl.classList.add('hidden');idCheckEl.innerHTML='';}
+  const scanNote=document.getElementById('scan-mode-note');
+  if(scanNote) scanNote.classList.add('hidden');
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
   document.getElementById('pdf-preview-thumb').classList.add('hidden');
   document.getElementById('pdf-preview-images').classList.add('hidden');
@@ -4098,7 +4107,7 @@ function openPdfModal(id){
 }
 function closePdfModal(){ document.getElementById('modal-pdf').classList.add('hidden'); }
 function clearPdfPreview(){
-  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[]; pendingIdentityCheck=null;
+  pendingPdfBase64=null; pendingPdfName=null; pendingPdfType=null; pendingImages=[]; pendingIdentityCheck=null; pendingCaptureMode=null;
   const idCheckEl=document.getElementById('pdf-identity-check');
   if(idCheckEl){idCheckEl.classList.add('hidden');idCheckEl.innerHTML='';}
   document.getElementById('pdf-preview-wrap').classList.add('hidden');
@@ -4141,9 +4150,12 @@ function removePendingImage(idx){
   renderPendingPreview();
   previewLabCombined();
 }
-function handlePdfSelect(evt){ processPdfFiles(Array.from(evt.target.files||[])); }
-function handlePdfDrop(evt){ evt.preventDefault(); processPdfFiles(Array.from((evt.dataTransfer&&evt.dataTransfer.files)||[])); }
-async function processPdfFiles(files){
+function handlePdfSelect(evt){
+  const source = evt && evt.target && evt.target.id==='pdf-camera-input' ? 'camera' : 'upload';
+  processPdfFiles(Array.from(evt.target.files||[]), source);
+}
+function handlePdfDrop(evt){ evt.preventDefault(); processPdfFiles(Array.from((evt.dataTransfer&&evt.dataTransfer.files)||[]), 'upload'); }
+async function processPdfFiles(files, source){
   if(!files.length) return;
   if(files.length>1){
     const allImages = files.every(function(f){ return f.type.startsWith('image/'); });
@@ -4153,7 +4165,7 @@ async function processPdfFiles(files){
       return;
     }
   }
-  for(const f of files){ await processPdfFile(f); }
+  for(const f of files){ await processPdfFile(f, source||'upload'); }
 }
 function resizeImageDataUrl(dataUrl, maxDim, quality){
   maxDim = maxDim || 1600; quality = quality || 0.85;
@@ -4252,7 +4264,65 @@ function autoCropDocument(dataUrl){
     img.src=dataUrl;
   });
 }
-async function processPdfFile(file){
+
+function enhanceDocumentScan(dataUrl){
+  return new Promise(function(resolve){
+    const img=new Image();
+    img.onload=function(){
+      try{
+        const canvas=document.createElement('canvas');
+        canvas.width=img.width; canvas.height=img.height;
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(img,0,0);
+        const image=ctx.getImageData(0,0,canvas.width,canvas.height);
+        const d=image.data;
+        for(let i=0;i<d.length;i+=4){
+          const r=d[i],g=d[i+1],b=d[i+2];
+          let gray=0.299*r+0.587*g+0.114*b;
+          gray=(gray-128)*1.34+145;
+          if(gray>205) gray += (255-gray)*0.75;
+          if(gray<95) gray *= 0.78;
+          gray=Math.max(0,Math.min(255,gray));
+          d[i]=gray;d[i+1]=gray;d[i+2]=gray;
+        }
+        ctx.putImageData(image,0,0);
+        resolve(canvas.toDataURL('image/jpeg',0.9));
+      }catch(e){
+        console.error('enhanceDocumentScan error:',e);
+        resolve(dataUrl);
+      }
+    };
+    img.onerror=function(){resolve(dataUrl);};
+    img.src=dataUrl;
+  });
+}
+
+async function createScannedPdfDataUrl(images){
+  if(!window.jspdf||!window.jspdf.jsPDF) throw new Error('ไม่พบ jsPDF');
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+  for(let i=0;i<images.length;i++){
+    if(i>0) pdf.addPage('a4','portrait');
+    const dataUrl=images[i].dataUrl;
+    const dim=await new Promise(function(resolve){
+      const img=new Image();
+      img.onload=function(){resolve({w:img.width,h:img.height});};
+      img.onerror=function(){resolve({w:1240,h:1754});};
+      img.src=dataUrl;
+    });
+    const pageW=210,pageH=297,margin=7;
+    const maxW=pageW-margin*2,maxH=pageH-margin*2;
+    const ratio=Math.min(maxW/dim.w,maxH/dim.h);
+    const w=dim.w*ratio,h=dim.h*ratio;
+    const x=(pageW-w)/2,y=(pageH-h)/2;
+    pdf.setFillColor(255,255,255);
+    pdf.rect(0,0,pageW,pageH,'F');
+    pdf.addImage(dataUrl,'JPEG',x,y,w,h,undefined,'MEDIUM');
+  }
+  return pdf.output('datauristring');
+}
+
+async function processPdfFile(file, source){
   if(!file){ return; }
   const isPdf = file.type==='application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   const isImage = file.type.startsWith('image/');
@@ -4278,9 +4348,21 @@ async function processPdfFile(file){
     return;
   }
   pendingPdfBase64=null; pendingPdfName=null; pendingPdfType='image';
+  pendingCaptureMode = source==='camera' ? 'camera' : 'upload';
+
   const cropped=await autoCropDocument(dataUrl);
-  const resized=await resizeImageDataUrl(cropped,1600,0.85);
-  pendingImages.push({dataUrl:resized, name:file.name});
+  const processed = source==='camera' ? await enhanceDocumentScan(cropped) : cropped;
+  const resized=await resizeImageDataUrl(processed,1800,0.88);
+
+  pendingImages.push({
+    dataUrl:resized,
+    name: source==='camera' ? ('scan_page_'+(pendingImages.length+1)+'.jpg') : file.name,
+    source:source
+  });
+
+  const scanNote=document.getElementById('scan-mode-note');
+  if(scanNote) scanNote.classList.toggle('hidden', pendingCaptureMode!=='camera');
+
   renderPendingPreview();
   previewLabCombined();
 }
@@ -4296,7 +4378,9 @@ function previewLabCombined(){
   else if(pendingPdfType==='image' && pendingImages.length){ srcs=pendingImages.map(function(im){return im.dataUrl;}); }
   if(!srcs.length){ labSection.classList.add('hidden'); contentEl.innerHTML=''; return; }
   labSection.classList.remove('hidden');
-  loadingEl.textContent = fileType==='image' ? 'กำลังอ่านภาพ (OCR)...' : 'กำลังอ่าน PDF...';
+  loadingEl.textContent = fileType==='image'
+    ? (pendingCaptureMode==='camera' ? 'กำลังสแกนและอ่านเอกสาร (OCR)...' : 'กำลังอ่านภาพ (OCR)...')
+    : 'กำลังอ่าน PDF...';
   contentEl.innerHTML='';
   window.LabModule.renderFromSources('pdf-lab-preview-content', srcs, gender, fileType, r)
     .then(function(){
@@ -4325,9 +4409,9 @@ function dataUrlToBlob(dataUrl){
   while(n--){ u8[n]=bstr.charCodeAt(n); }
   return new Blob([u8],{type:mime});
 }
-function savePdf(){
-  const hasPdf = pendingPdfType==='pdf' && pendingPdfBase64;
-  const hasImages = pendingPdfType==='image' && pendingImages.length>0;
+async function savePdf(){
+  let hasPdf = pendingPdfType==='pdf' && pendingPdfBase64;
+  let hasImages = pendingPdfType==='image' && pendingImages.length>0;
   if(!hasPdf && !hasImages){ alert('กรุณาแนบไฟล์หรือถ่ายภาพผลตรวจ'); return; }
   const r=records.find(function(x){return x.id===currentPdfModalId;});
   if(!r)return;
@@ -4342,9 +4426,29 @@ function savePdf(){
   }
 
   const stagedImages = hasImages ? pendingImages.slice() : [];
-  const pdfBase64 = hasPdf ? pendingPdfBase64 : null;
-  const pdfName = hasPdf ? pendingPdfName : (stagedImages.length+' รูปภาพ');
-  const fileType = pendingPdfType;
+  const isCameraScan = hasImages && pendingCaptureMode==='camera';
+
+  const ocrSources = hasImages
+    ? stagedImages.map(function(im){return im.dataUrl;})
+    : [pendingPdfBase64];
+  const ocrFileType = hasImages ? 'image' : 'pdf';
+
+  let pdfBase64 = hasPdf ? pendingPdfBase64 : null;
+  let pdfName = hasPdf ? pendingPdfName : (stagedImages.length+' รูปภาพ');
+  let fileType = pendingPdfType;
+
+  if(isCameraScan){
+    try{
+      pdfBase64 = await createScannedPdfDataUrl(stagedImages);
+      pdfName = 'scanned-health-result-'+r.id+'.pdf';
+      hasPdf = true;
+      hasImages = false;
+      fileType = 'pdf';
+    }catch(e){
+      alert('ไม่สามารถสร้าง PDF จากภาพสแกนได้: '+e.message);
+      return;
+    }
+  }
 
   const localCleanupUrls=[];
   if(hasImages){
@@ -4366,6 +4470,7 @@ function savePdf(){
  r.pdfName = pdfName;
 r.pdfDate = new Date().toLocaleString('th-TH');
 r.resultFileType = fileType;
+r.scannedFromCamera = isCameraScan;
 r._uploading = true;
 
 /*
@@ -4421,12 +4526,10 @@ renderAdmin();
       if(!window.LabModule) return;
       // ใช้ไฟล์ต้นฉบับในเครื่องสำหรับ OCR หลังอัปโหลดสำเร็จ
       // ไม่ใช้ URL จาก Supabase เพราะบางเบราว์เซอร์/PDF.js อาจติด CORS
-      const srcs = hasImages
-        ? stagedImages.map(function(im){ return im.dataUrl; })
-        : [pdfBase64];
+      const srcs = ocrSources;
       return srcs.reduce(function(p,src){
           return p.then(function(textSoFar){
-            return window.LabModule.sourceToText(src, fileType).then(function(t){ return textSoFar+t+'\n'; });
+            return window.LabModule.sourceToText(src, ocrFileType).then(function(t){ return textSoFar+t+'\n'; });
           });
         }, Promise.resolve(''))
         .then(function(textAll){
