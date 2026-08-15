@@ -3250,27 +3250,113 @@ function toggleApptRespDate(){
 async function submitApptResponse(){
   const val = document.querySelector('input[name="appt-resp-action"]:checked');
   const errEl = document.getElementById('appt-resp-err');
-  if(!val){ errEl.textContent='กรุณาเลือกคำตอบ'; errEl.classList.remove('hidden'); return; }
+  if(!val){
+    errEl.textContent='กรุณาเลือกคำตอบ';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
   let newDate = null;
   if(val.value==='reschedule'){
     newDate = document.getElementById('appt-resp-date').value;
-    if(!newDate){ errEl.textContent='กรุณาเลือกวันที่ต้องการเลื่อน'; errEl.classList.remove('hidden'); return; }
+    if(!newDate){
+      errEl.textContent='กรุณาเลือกวันที่ต้องการเลื่อน';
+      errEl.classList.remove('hidden');
+      return;
+    }
   }
+
   errEl.classList.add('hidden');
+
+  // เก็บ record ฉบับเต็มไว้ก่อน เพราะ RPC อาจส่งกลับมาเฉพาะข้อมูลบางส่วน
+  const oldRecord = currentRecord
+    ? JSON.parse(JSON.stringify(currentRecord))
+    : null;
+
+  if(!oldRecord){
+    errEl.textContent='ไม่พบข้อมูลผู้รับบริการ กรุณาเข้าสู่ระบบใหม่';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
   try{
     const { data, error } = await window._sb.rpc('submit_appointment_response', {
-      p_idcard: currentRecord.idcard, p_dob: currentRecord.dob,
-      p_action: val.value, p_new_date: newDate
+      p_idcard: oldRecord.idcard,
+      p_dob: oldRecord.dob,
+      p_action: val.value,
+      p_new_date: newDate
     });
+
     if(error) throw error;
-    if(data && data.length){
-      currentRecord = data[data.length-1];
-      renderResult(currentRecord);
-      alert('✅ บันทึกคำตอบเรียบร้อยแล้ว');
+
+    // RPC บางครั้งคืน array และบางกรณีอาจคืน object
+    let serverRecord = null;
+    if(Array.isArray(data) && data.length){
+      serverRecord = data[data.length-1];
+    }else if(data && typeof data==='object'){
+      serverRecord = data;
     }
+
+    // ใช้ข้อมูลเดิมเป็นฐาน เพื่อไม่ให้ appointment / lab / pdf / ncd หาย
+    const mergedRecord = Object.assign({}, oldRecord, serverRecord || {});
+
+    // หาก RPC ไม่ได้ส่งข้อมูลตอบกลับเรื่องนัดมา ให้สร้างจากคำตอบที่เพิ่งบันทึก
+    if(!mergedRecord.patientResponse){
+      mergedRecord.patientResponse = {
+        action: val.value,
+        requestedDate: newDate,
+        respondedAt: new Date().toISOString()
+      };
+    }
+
+    // คงข้อมูลสำคัญจาก record เดิมหาก server ไม่ได้ส่งกลับมา
+    if(!mergedRecord.appointment && oldRecord.appointment){
+      mergedRecord.appointment = oldRecord.appointment;
+    }
+    if(!mergedRecord.lab && oldRecord.lab){
+      mergedRecord.lab = oldRecord.lab;
+    }
+    if(!mergedRecord.labDraft && oldRecord.labDraft){
+      mergedRecord.labDraft = oldRecord.labDraft;
+    }
+    if(!mergedRecord.ncdAnalysis && oldRecord.ncdAnalysis){
+      mergedRecord.ncdAnalysis = oldRecord.ncdAnalysis;
+    }
+    if(!mergedRecord.pdfData && oldRecord.pdfData){
+      mergedRecord.pdfData = oldRecord.pdfData;
+    }
+    if((!mergedRecord.images || !mergedRecord.images.length) && oldRecord.images){
+      mergedRecord.images = oldRecord.images;
+    }
+
+    currentRecord = mergedRecord;
+    window.currentRecord = mergedRecord;
+
+    // อัปเดต record ในหน่วยความจำของหน้า Admin/ระบบด้วย
+    const idx = records.findIndex(function(x){ return x.id===mergedRecord.id; });
+    if(idx>=0){
+      records[idx] = Object.assign({}, records[idx], mergedRecord);
+    }
+
+    // อยู่หน้าเดิม และ render ใหม่จาก record ฉบับเต็ม
+    renderResult(currentRecord);
+    showPage('result');
+
+    alert(
+      val.value==='confirm'
+        ? '✅ บันทึกการยืนยันนัดหมายเรียบร้อยแล้ว'
+        : '✅ บันทึกคำขอเลื่อนนัดเรียบร้อยแล้ว'
+    );
+
   }catch(e){
     console.error('submitApptResponse error:', e);
-    errEl.textContent='บันทึกไม่สำเร็จ: '+e.message; errEl.classList.remove('hidden');
+
+    // หากบันทึกไม่สำเร็จ ให้คงข้อมูลหน้าเดิมไว้ ไม่ทำให้ผลตรวจหาย
+    currentRecord = oldRecord;
+    window.currentRecord = oldRecord;
+
+    errEl.textContent='บันทึกไม่สำเร็จ: '+e.message;
+    errEl.classList.remove('hidden');
   }
 }
 // ======= ปุ่มรับทราบผลการตรวจสุขภาพ =======
