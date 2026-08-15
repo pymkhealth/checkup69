@@ -515,7 +515,7 @@
       </div>
       <div>
         <label class="fl">เพศ <span style="color:red">*</span></label>
-        <select id="f-gender" class="fi"><option value="">-- เลือก --</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
+        <select id="f-gender" class="fi" onchange="checkRegistrationVitals()"><option value="">-- เลือก --</option><option value="1">ชาย</option><option value="2">หญิง</option></select>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
@@ -539,14 +539,19 @@
   <div id="step2" class="hidden sc p-6">
     <h2 style="font-size:16px;font-weight:700;color:#1e293b;margin:0 0 18px;padding-bottom:10px;border-bottom:2px solid #fdf3e0;">ขั้นตอนที่ 2: ข้อมูลสุขภาพ</h2>
     <div style="background:#fdf3e0;border-radius:10px;padding:16px;margin-bottom:18px;">
-      <h3 style="font-size:14px;font-weight:700;color:#7f1621;margin:0 0 12px;">📏 น้ำหนัก / ส่วนสูง / BMI</h3>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
-        <div><label class="fl">น้ำหนัก (kg) <span style="color:red">*</span></label><input type="number" id="f-weight" class="fi" placeholder="kg" step="0.1" oninput="calcBMI()"></div>
-        <div><label class="fl">ส่วนสูง (cm) <span style="color:red">*</span></label><input type="number" id="f-height" class="fi" placeholder="cm" oninput="calcBMI()"></div>
+      <h3 style="font-size:14px;font-weight:700;color:#7f1621;margin:0 0 12px;">📏 ข้อมูลร่างกาย / ความดันโลหิต / ชีพจร</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+        <div><label class="fl">น้ำหนัก (kg) <span style="color:red">*</span></label><input type="number" id="f-weight" class="fi" placeholder="kg" step="0.1" oninput="calcBMI();checkRegistrationVitals()"></div>
+        <div><label class="fl">ส่วนสูง (cm) <span style="color:red">*</span></label><input type="number" id="f-height" class="fi" placeholder="cm" oninput="calcBMI();checkRegistrationVitals()"></div>
         <div><label class="fl">BMI (kg/m²)</label><input type="text" id="f-bmi" class="fi" readonly style="background:#f0f4ff;font-weight:700;" placeholder="อัตโนมัติ"></div>
-        <div><label class="fl">รอบเอว (cm)</label><input type="number" id="f-waist" class="fi" placeholder="cm"></div>
+        <div><label class="fl">รอบเอว (cm)</label><input type="number" id="f-waist" class="fi" placeholder="cm" step="0.1" oninput="checkRegistrationVitals()"></div>
+        <div><label class="fl">ความดันตัวบน SBP (mmHg)</label><input type="number" id="f-sbp" class="fi" placeholder="เช่น 120" min="50" max="300" oninput="checkRegistrationVitals()"></div>
+        <div><label class="fl">ความดันตัวล่าง DBP (mmHg)</label><input type="number" id="f-dbp" class="fi" placeholder="เช่น 80" min="30" max="200" oninput="checkRegistrationVitals()"></div>
+        <div><label class="fl">ชีพจร (ครั้ง/นาที)</label><input type="number" id="f-pulse" class="fi" placeholder="เช่น 72" min="30" max="220" oninput="checkRegistrationVitals()"></div>
       </div>
       <div id="bmi-result" style="margin-top:8px;font-size:13px;font-weight:600;"></div>
+      <div id="vitals-result" class="hidden" style="margin-top:10px;border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.65;"></div>
+      <div style="font-size:10px;color:#9ca3af;margin-top:6px;">* ข้อความแจ้งเตือนเป็นการคัดกรองเบื้องต้น ไม่ใช่การวินิจฉัยโรค</div>
     </div>
     <div style="margin-bottom:18px;">
       <h3 style="font-size:14px;font-weight:700;color:#374151;margin:0 0 12px;">🚬 พฤติกรรมสุขภาพ</h3>
@@ -857,15 +862,48 @@
 </div>
 
 <div id="modal-cvd-score" class="hidden modal-overlay">
-  <div class="sc p-6" style="width:460px;max-width:94vw;">
-    <h3 style="font-size:16px;font-weight:800;color:#7f1621;margin:0 0 4px;">❤️ บันทึก CVD Risk Score</h3>
-    <p id="cvd-person-name" style="font-size:12px;color:#64748b;margin:0 0 16px;"></p>
-    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;font-size:12px;color:#9a3412;line-height:1.6;margin-bottom:14px;">กรุณากรอกคะแนนที่ประเมิน/ยืนยันโดยบุคลากรทางการแพทย์ ระบบนี้ยังไม่คำนวณ Thai CV Risk Score อัตโนมัติ</div>
-    <label class="fl">CVD Risk Score (ความเสี่ยง 10 ปี) %</label>
-    <input id="cvd-score-input" class="fi" type="number" min="0" max="100" step="0.1" placeholder="เช่น 8.5">
-    <label class="fl" style="margin-top:12px;">หมายเหตุ (ถ้ามี)</label>
-    <textarea id="cvd-note-input" class="fi" rows="3"></textarea>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;"><button class="bs" onclick="closeCvdScore()">ยกเลิก</button><button class="bg" onclick="saveCvdScore()">บันทึก</button></div>
+  <div class="sc p-6" style="width:720px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+    <h3 style="font-size:17px;font-weight:800;color:#7f1621;margin:0 0 4px;">❤️ ประเมิน Thai CVD Risk Score</h3>
+    <p id="cvd-person-name" style="font-size:12px;color:#64748b;margin:0 0 14px;"></p>
+
+    <div id="cvd-eligibility-note" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:9px;padding:10px 12px;font-size:11px;color:#475569;line-height:1.6;margin-bottom:14px;">
+      เครื่องมือนี้ใช้ช่วยประเมินความเสี่ยงโรคหัวใจและหลอดเลือดใน 10 ปี และไม่แทนการประเมินทางคลินิก
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+      <div><label class="fl">อายุ (ปี)</label><input id="cvd-age" class="fi" type="number" min="35" max="70"></div>
+      <div><label class="fl">เพศ</label><select id="cvd-sex" class="fi"><option value="1">ชาย</option><option value="0">หญิง</option></select></div>
+      <div><label class="fl">สูบบุหรี่ในปัจจุบัน</label><select id="cvd-smoke" class="fi"><option value="0">ไม่สูบ</option><option value="1">สูบ</option></select></div>
+      <div><label class="fl">โรคเบาหวาน</label><select id="cvd-dm" class="fi"><option value="0">ไม่เป็น</option><option value="1">เป็น</option></select></div>
+      <div><label class="fl">SBP (mmHg)</label><input id="cvd-sbp" class="fi" type="number" min="50" max="300"></div>
+      <div><label class="fl">ส่วนสูง (cm)</label><input id="cvd-height" class="fi" type="number" min="100" max="250"></div>
+      <div><label class="fl">รอบเอว (cm)</label><input id="cvd-waist" class="fi" type="number" min="30" max="200" step="0.1"></div>
+      <div><label class="fl">Total Cholesterol (mg/dL)</label><input id="cvd-chol" class="fi" type="number" min="50" max="500" step="0.1"></div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <label class="fl">วิธีการประเมิน</label>
+      <div class="rg" style="grid-template-columns:1fr 1fr;">
+        <label class="rb"><input type="radio" name="cvd-method" value="chol" onchange="updateCvdMethodUI()"> ใช้ Total Cholesterol</label>
+        <label class="rb"><input type="radio" name="cvd-method" value="waist" onchange="updateCvdMethodUI()"> ใช้รอบเอวและส่วนสูง</label>
+      </div>
+      <div id="cvd-method-hint" style="font-size:11px;color:#64748b;margin-top:5px;"></div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="bp" onclick="calculateCvdRisk()">🧮 คำนวณ CVD Risk</button>
+      <button class="bs" onclick="prefillCvdFromRecord()">↻ ดึงข้อมูลล่าสุดอีกครั้ง</button>
+    </div>
+
+    <div id="cvd-result-box" class="hidden" style="margin-top:14px;border-radius:10px;padding:14px;text-align:center;"></div>
+
+    <label class="fl" style="margin-top:14px;">หมายเหตุ (ถ้ามี)</label>
+    <textarea id="cvd-note-input" class="fi" rows="3" placeholder="เช่น ประเมินจากผลตรวจสุขภาพประจำปี"></textarea>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button class="bs" onclick="closeCvdScore()">ยกเลิก</button>
+      <button class="bg" onclick="saveCvdScore()">💾 บันทึกผล CVD Risk</button>
+    </div>
   </div>
 </div>
 
@@ -1761,8 +1799,8 @@ window.exportPomsat11 = function(recs) {
       r.height || '',
       r.bmi || '',
       r.waist || '',
-      '',
-      '',
+      r.sbp || '',
+      r.dbp || '',
       '',
       '',
       pres(urineResult),
@@ -2102,9 +2140,184 @@ function openGroupList(type,key,title){
 
 // ======= CVD RISK SCORE =======
 let currentCvdRecordId=null;
-function openCvdScore(id){const r=records.find(x=>x.id===id);if(!r)return;currentCvdRecordId=id;document.getElementById('cvd-person-name').textContent=[r.prefix,r.fname,r.lname].filter(Boolean).join(' ')+' | '+(r.unit||'');document.getElementById('cvd-score-input').value=Number.isFinite(parseFloat(r.cvdRiskScore))?r.cvdRiskScore:'';document.getElementById('cvd-note-input').value=r.cvdRiskNote||'';document.getElementById('modal-cvd-score').classList.remove('hidden');}
-function closeCvdScore(){document.getElementById('modal-cvd-score').classList.add('hidden');currentCvdRecordId=null;}
-async function saveCvdScore(){const r=records.find(x=>x.id===currentCvdRecordId);if(!r)return;const raw=document.getElementById('cvd-score-input').value.trim();if(raw===''){delete r.cvdRiskScore;delete r.cvdRiskNote;delete r.cvdRiskUpdatedBy;}else{const score=parseFloat(raw);if(!Number.isFinite(score)||score<0||score>100){alert('กรุณากรอกคะแนน 0–100%');return;}r.cvdRiskScore=score;r.cvdRiskNote=document.getElementById('cvd-note-input').value.trim();r.cvdRiskUpdatedBy=getCurrentAdminAudit();}await updateRecordInSupabase(r);closeCvdScore();renderAdmin();renderAdminNcdDashboard(records);}
+let currentCvdCalculatedScore=null;
+
+function cvdRiskCategory(score){
+  if(score<10) return {label:'ต่ำ',bg:'#dcfce7',color:'#166534'};
+  if(score<20) return {label:'ปานกลาง',bg:'#fef9c3',color:'#854d0e'};
+  if(score<30) return {label:'สูง',bg:'#ffedd5',color:'#c2410c'};
+  if(score<40) return {label:'สูงมาก',bg:'#fee2e2',color:'#b91c1c'};
+  return {label:'สูงอันตราย',bg:'#fecaca',color:'#7f1d1d'};
+}
+
+function prefillCvdFromRecord(){
+  const r=records.find(function(x){return x.id===currentCvdRecordId;});
+  if(!r) return;
+
+  document.getElementById('cvd-age').value=Number.isFinite(parseFloat(r.age))?parseFloat(r.age):'';
+  document.getElementById('cvd-sex').value=r.gender==='1'?'1':'0';
+  document.getElementById('cvd-smoke').value=parseInt(r.smoke||0)>=2?'1':'0';
+  document.getElementById('cvd-dm').value=(Array.isArray(r.ncds)&&r.ncds.includes(2))?'1':'0';
+  document.getElementById('cvd-sbp').value=r.sbp||'';
+  document.getElementById('cvd-height').value=r.height||'';
+  document.getElementById('cvd-waist').value=r.waist||'';
+
+  const chol=(r.lab&&r.lab.chol!=null)?r.lab.chol:'';
+  document.getElementById('cvd-chol').value=chol;
+
+  const preferredMethod = chol!=='' ? 'chol' : 'waist';
+  const radio=document.querySelector('input[name="cvd-method"][value="'+preferredMethod+'"]');
+  if(radio) radio.checked=true;
+  updateCvdMethodUI();
+
+  document.getElementById('cvd-note-input').value=r.cvdRiskNote||'';
+  currentCvdCalculatedScore=Number.isFinite(parseFloat(r.cvdRiskScore))?parseFloat(r.cvdRiskScore):null;
+
+  const hasKnownCvd=Array.isArray(r.ncds)&&r.ncds.includes(3);
+  const age=parseFloat(r.age);
+  const note=document.getElementById('cvd-eligibility-note');
+  if(hasKnownCvd){
+    note.style.background='#fee2e2';note.style.border='1px solid #fecaca';note.style.color='#991b1b';
+    note.innerHTML='⚠️ ผู้รับบริการมีประวัติโรคหัวใจและหลอดเลือด เครื่องมือนี้ไม่ควรใช้เพื่อประเมินความเสี่ยงแบบปฐมภูมิ';
+  }else if(Number.isFinite(age)&&(age<35||age>70)){
+    note.style.background='#fff7ed';note.style.border='1px solid #fed7aa';note.style.color='#9a3412';
+    note.innerHTML='⚠️ อายุอยู่นอกช่วง 35–70 ปี ซึ่งเป็นช่วงอายุที่ Thai CV Risk Score ถูกออกแบบให้ใช้ โปรดใช้ดุลยพินิจทางคลินิก';
+  }else{
+    note.style.background='#f8fafc';note.style.border='1px solid #e5e7eb';note.style.color='#475569';
+    note.innerHTML='ใช้ช่วยประเมินความเสี่ยงโรคหัวใจและหลอดเลือดใน 10 ปี สำหรับประชากรไทย โดยผลลัพธ์ไม่แทนการประเมินของแพทย์';
+  }
+
+  if(currentCvdCalculatedScore!==null){
+    renderCvdCalculatedResult(currentCvdCalculatedScore, r.cvdRiskMethod||preferredMethod);
+  }else{
+    document.getElementById('cvd-result-box').classList.add('hidden');
+  }
+}
+
+function openCvdScore(id){
+  const r=records.find(function(x){return x.id===id;});
+  if(!r) return;
+  currentCvdRecordId=id;
+  currentCvdCalculatedScore=null;
+  document.getElementById('cvd-person-name').textContent=[r.prefix,r.fname,r.lname].filter(Boolean).join(' ')+' | '+(r.unit||'');
+  prefillCvdFromRecord();
+  document.getElementById('modal-cvd-score').classList.remove('hidden');
+}
+
+function closeCvdScore(){
+  document.getElementById('modal-cvd-score').classList.add('hidden');
+  currentCvdRecordId=null;
+  currentCvdCalculatedScore=null;
+}
+
+function updateCvdMethodUI(){
+  const method=document.querySelector('input[name="cvd-method"]:checked')?.value||'waist';
+  const chol=document.getElementById('cvd-chol');
+  const waist=document.getElementById('cvd-waist');
+  const height=document.getElementById('cvd-height');
+  const hint=document.getElementById('cvd-method-hint');
+
+  if(method==='chol'){
+    chol.style.background='#fff';
+    waist.style.background='#f8fafc';height.style.background='#f8fafc';
+    hint.textContent='วิธีนี้ใช้ Age, Sex, Smoking, Diabetes, SBP และ Total Cholesterol';
+  }else{
+    chol.style.background='#f8fafc';
+    waist.style.background='#fff';height.style.background='#fff';
+    hint.textContent='วิธีนี้ใช้ Age, Sex, Smoking, Diabetes, SBP, รอบเอว และส่วนสูง';
+  }
+}
+
+function renderCvdCalculatedResult(score,method){
+  const cat=cvdRiskCategory(score);
+  const box=document.getElementById('cvd-result-box');
+  box.classList.remove('hidden');
+  box.style.background=cat.bg;box.style.color=cat.color;box.style.border='1px solid '+cat.color+'33';
+  box.innerHTML='<div style="font-size:12px;font-weight:700;">Thai CVD Risk Score (10 ปี)</div>'
+    +'<div style="font-size:36px;font-weight:900;margin:3px 0;">'+score.toFixed(1)+'%</div>'
+    +'<div style="font-size:13px;font-weight:800;">ระดับความเสี่ยง: '+cat.label+'</div>'
+    +'<div style="font-size:10px;opacity:.75;margin-top:4px;">วิธีคำนวณ: '+(method==='chol'?'ใช้ Total Cholesterol':'ใช้รอบเอว/ส่วนสูง')+'</div>';
+}
+
+function calculateCvdRisk(){
+  const r=records.find(function(x){return x.id===currentCvdRecordId;});
+  if(!r) return;
+
+  const age=parseFloat(document.getElementById('cvd-age').value);
+  const sex=parseInt(document.getElementById('cvd-sex').value,10);
+  const smoking=parseInt(document.getElementById('cvd-smoke').value,10);
+  const dm=parseInt(document.getElementById('cvd-dm').value,10);
+  const sbp=parseFloat(document.getElementById('cvd-sbp').value);
+  const method=document.querySelector('input[name="cvd-method"]:checked')?.value||'waist';
+
+  if(!Number.isFinite(age)||!Number.isFinite(sbp)){
+    alert('กรุณากรอกอายุและ SBP ให้ครบ');
+    return;
+  }
+  if(age<35||age>70){
+    alert('Thai CV Risk Score เหมาะสำหรับอายุ 35–70 ปี กรุณาตรวจสอบอายุ');
+    return;
+  }
+  if(Array.isArray(r.ncds)&&r.ncds.includes(3)){
+    alert('ผู้รับบริการมีประวัติโรคหัวใจและหลอดเลือดอยู่แล้ว ไม่ควรใช้คะแนนนี้เป็นการประเมินความเสี่ยงปฐมภูมิ');
+    return;
+  }
+
+  let fullScore, risk;
+  if(method==='chol'){
+    const chol=parseFloat(document.getElementById('cvd-chol').value);
+    if(!Number.isFinite(chol)){alert('กรุณากรอก Total Cholesterol');return;}
+    fullScore=(0.08183*age)+(0.39499*sex)+(0.02084*sbp)+(0.69974*dm)+(0.00212*chol)+(0.41916*smoking);
+    risk=(1-Math.pow(0.978296,Math.exp(fullScore-7.04423)))*100;
+  }else{
+    const waist=parseFloat(document.getElementById('cvd-waist').value);
+    const height=parseFloat(document.getElementById('cvd-height').value);
+    if(!Number.isFinite(waist)||!Number.isFinite(height)||height<=0){
+      alert('กรุณากรอกรอบเอวและส่วนสูง');
+      return;
+    }
+    fullScore=(0.079*age)+(0.128*sex)+(0.019350987*sbp)+(0.58454*dm)+(3.512566*(waist/height))+(0.459*smoking);
+    risk=(1-Math.pow(0.978296,Math.exp(fullScore-7.720484)))*100;
+  }
+
+  if(!Number.isFinite(risk)){alert('ไม่สามารถคำนวณได้ กรุณาตรวจสอบข้อมูล');return;}
+  risk=Math.max(0,Math.min(100,risk));
+  currentCvdCalculatedScore=risk;
+  renderCvdCalculatedResult(risk,method);
+}
+
+async function saveCvdScore(){
+  const r=records.find(function(x){return x.id===currentCvdRecordId;});
+  if(!r) return;
+  if(currentCvdCalculatedScore===null){
+    alert('กรุณากด “คำนวณ CVD Risk” ก่อนบันทึก');
+    return;
+  }
+
+  const method=document.querySelector('input[name="cvd-method"]:checked')?.value||'waist';
+  r.cvdRiskScore=Number(currentCvdCalculatedScore.toFixed(1));
+  r.cvdRiskCategory=cvdRiskCategory(r.cvdRiskScore).label;
+  r.cvdRiskMethod=method;
+  r.cvdRiskNote=document.getElementById('cvd-note-input').value.trim();
+  r.cvdRiskInputs={
+    age:parseFloat(document.getElementById('cvd-age').value),
+    sex:parseInt(document.getElementById('cvd-sex').value,10),
+    smoking:parseInt(document.getElementById('cvd-smoke').value,10),
+    diabetes:parseInt(document.getElementById('cvd-dm').value,10),
+    sbp:parseFloat(document.getElementById('cvd-sbp').value),
+    cholesterol:document.getElementById('cvd-chol').value===''?null:parseFloat(document.getElementById('cvd-chol').value),
+    waist:document.getElementById('cvd-waist').value===''?null:parseFloat(document.getElementById('cvd-waist').value),
+    height:document.getElementById('cvd-height').value===''?null:parseFloat(document.getElementById('cvd-height').value)
+  };
+  r.cvdRiskUpdatedBy=getCurrentAdminAudit();
+
+  await updateRecordInSupabase(r);
+  closeCvdScore();
+  renderAdmin();
+  renderAdminNcdDashboard(records);
+  alert('✅ บันทึก CVD Risk Score เรียบร้อยแล้ว');
+}
+
 
 // ======= ADMIN LOGIN =======
 function showAdminLogin(){
@@ -2683,6 +2896,66 @@ function validateStep(n){
   }
   return true;
 }
+// ======= REGISTRATION VITAL SIGN SCREENING =======
+function checkRegistrationVitals(){
+  const sbp=parseFloat(document.getElementById('f-sbp')?.value);
+  const dbp=parseFloat(document.getElementById('f-dbp')?.value);
+  const pulse=parseFloat(document.getElementById('f-pulse')?.value);
+  const waist=parseFloat(document.getElementById('f-waist')?.value);
+  const gender=document.getElementById('f-gender')?.value;
+  const box=document.getElementById('vitals-result');
+  if(!box) return;
+
+  const messages=[];
+  let severity='';
+
+  function add(level,msg){
+    messages.push(msg);
+    if(level==='high') severity='high';
+    else if(level==='warn' && severity!=='high') severity='warn';
+  }
+
+  // ความดัน: ใช้เพื่อคัดกรองและกระตุ้นให้วัดซ้ำ ไม่ใช่วินิจฉัย
+  if(Number.isFinite(sbp) || Number.isFinite(dbp)){
+    if((Number.isFinite(sbp)&&sbp>=180) || (Number.isFinite(dbp)&&dbp>=120)){
+      add('high','⚠️ ค่าความดันโลหิตสูงมาก กรุณาติดต่อเจ้าหน้าที่เพื่อวัดความดันโลหิตซ้ำทันที');
+    }else if((Number.isFinite(sbp)&&sbp>=140) || (Number.isFinite(dbp)&&dbp>=90)){
+      add('warn','⚠️ ค่าความดันโลหิตสูงกว่าช่วงคัดกรอง กรุณาติดต่อเจ้าหน้าที่เพื่อพักและวัดความดันโลหิตซ้ำ');
+    }else if((Number.isFinite(sbp)&&sbp<90) || (Number.isFinite(dbp)&&dbp<60)){
+      add('warn','⚠️ ค่าความดันโลหิตค่อนข้างต่ำ กรุณาตรวจซ้ำและแจ้งเจ้าหน้าที่ โดยเฉพาะหากมีเวียนศีรษะ หน้ามืด หรืออ่อนเพลีย');
+    }
+  }
+
+  if(Number.isFinite(pulse)){
+    if(pulse<60){
+      add('warn','⚠️ ชีพจรต่ำกว่า 60 ครั้ง/นาที กรุณาพักและวัดซ้ำ พร้อมแจ้งเจ้าหน้าที่เพื่อประเมินเพิ่มเติม');
+    }else if(pulse>100){
+      add('warn','⚠️ ชีพจรมากกว่า 100 ครั้ง/นาที กรุณาพักและวัดซ้ำ พร้อมแจ้งเจ้าหน้าที่เพื่อประเมินเพิ่มเติม');
+    }
+  }
+
+  if(Number.isFinite(waist) && gender){
+    const limit = gender==='1' ? 90 : 80;
+    if(waist>=limit){
+      add('warn','ℹ️ รอบเอวอยู่ในช่วงที่ควรเฝ้าระวังความเสี่ยงเมตาบอลิก ควรรับคำแนะนำด้านอาหารและการออกกำลังกาย');
+    }
+  }
+
+  if(!messages.length){
+    box.classList.add('hidden');
+    box.innerHTML='';
+    return;
+  }
+
+  box.classList.remove('hidden');
+  if(severity==='high'){
+    box.style.background='#fee2e2';box.style.border='1px solid #fecaca';box.style.color='#991b1b';
+  }else{
+    box.style.background='#fff7ed';box.style.border='1px solid #fed7aa';box.style.color='#9a3412';
+  }
+  box.innerHTML='<b>หมายเหตุจากการคัดกรอง</b><br>'+messages.join('<br>');
+}
+
 // ======= BMI =======
 function calcBMI(){
   const w=parseFloat(document.getElementById('f-weight').value);
@@ -2809,6 +3082,9 @@ function submitForm(){
     height:document.getElementById('f-height').value,
     bmi:document.getElementById('f-bmi').value,
     waist:document.getElementById('f-waist').value,
+    sbp:document.getElementById('f-sbp').value,
+    dbp:document.getElementById('f-dbp').value,
+    pulse:document.getElementById('f-pulse').value,
     smoke, alcohol:alc,
     exercise:parseInt(document.getElementById('f-exercise').value),
     fagScore, auditScore, hasNCD, ncds,
@@ -3121,6 +3397,8 @@ function renderResult(r){
     +'<tr><td style="color:#6b7280;padding:3px 0;width:38%;">น้ำหนัก/สูง</td><td>'+r.weight+' kg / '+r.height+' cm</td></tr>'
     +'<tr><td style="color:#6b7280;padding:3px 0;">BMI</td><td><span class="rt '+bmiTag+'">'+r.bmi+' kg/m²</span></td></tr>'
     +'<tr><td style="color:#6b7280;padding:3px 0;">รอบเอว</td><td>'+(r.waist||'-')+' cm</td></tr>'
+    +'<tr><td style="color:#6b7280;padding:3px 0;">ความดันโลหิต</td><td>'+(r.sbp&&r.dbp?(r.sbp+'/'+r.dbp+' mmHg'):'-')+'</td></tr>'
+    +'<tr><td style="color:#6b7280;padding:3px 0;">ชีพจร</td><td>'+(r.pulse?(r.pulse+' ครั้ง/นาที'):'-')+'</td></tr>'
     +'<tr><td style="color:#6b7280;padding:3px 0;">สูบบุหรี่</td><td>'+smokeTxt+(r.fagScore>0?' (Fagerstrom: '+r.fagScore+')':'')+'</td></tr>'
     +'<tr><td style="color:#6b7280;padding:3px 0;">ดื่มสุรา</td><td>'+alcTxt+(r.auditScore>0?' (AUDIT-C: '+r.auditScore+')':'')+'</td></tr>'
     +'<tr><td style="color:#6b7280;padding:3px 0;">ออกกำลังกาย</td><td>'+exTxt+'</td></tr>'
