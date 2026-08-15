@@ -410,11 +410,36 @@
 
 <div id="page-bp-admin" class="hidden" style="max-width:1200px;margin:0 auto;">
   <div class="sc p-4 mb-4" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-    <div><h2 style="font-size:18px;font-weight:800;color:#991b1b;margin:0 0 2px;">🩺 ข้อมูลความดันโลหิตที่บ้าน</h2><p style="font-size:12px;color:#64748b;margin:0;">สำหรับ Admin — ดูข้อมูลที่ผู้รับบริการบันทึก</p></div>
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:#991b1b;margin:0 0 2px;">🩺 ผู้ติดตามความดันโลหิตที่บ้าน</h2>
+      <p style="font-size:12px;color:#64748b;margin:0;">รวมรายชื่อผู้ที่บันทึกความดันด้วยตนเอง และผู้ที่เจ้าหน้าที่กำหนดให้วัด 7 วันก่อนพบแพทย์</p>
+    </div>
     <button class="bs" onclick="showPage('admin')">← กลับ Admin</button>
   </div>
-  <div class="sc p-4 mb-4"><input id="bp-admin-search" class="fi" placeholder="ค้นหาชื่อ, เลขบัตร, HN หรือหน่วย" oninput="renderBpAdminTable()"></div>
-  <div class="sc" style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:1100px;font-size:11px;"><thead><tr style="background:#991b1b;color:#fff;"><th style="padding:8px;">วันที่</th><th style="padding:8px;">ชื่อ-สกุล</th><th style="padding:8px;">HN</th><th style="padding:8px;">หน่วย</th><th style="padding:8px;">เช้า 1</th><th style="padding:8px;">เช้า 2</th><th style="padding:8px;">ก่อนนอน 1</th><th style="padding:8px;">ก่อนนอน 2</th></tr></thead><tbody id="bp-admin-body"></tbody></table></div>
+
+  <div id="bp-admin-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px;"></div>
+
+  <div class="sc p-4 mb-4">
+    <input id="bp-admin-search" class="fi" placeholder="ค้นหาชื่อ, เลขบัตร, HN หรือหน่วย" oninput="renderBpAdminTable()">
+  </div>
+
+  <div class="sc" style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;min-width:980px;font-size:11px;">
+      <thead>
+        <tr style="background:#991b1b;color:#fff;">
+          <th style="padding:9px;text-align:left;">ชื่อ-สกุล</th>
+          <th style="padding:9px;">HN</th>
+          <th style="padding:9px;">หน่วย</th>
+          <th style="padding:9px;">ที่มาของรายการ</th>
+          <th style="padding:9px;">ช่วงที่เจ้าหน้าที่กำหนด</th>
+          <th style="padding:9px;">บันทึกแล้ว</th>
+          <th style="padding:9px;">สถานะ</th>
+          <th style="padding:9px;">รายละเอียด</th>
+        </tr>
+      </thead>
+      <tbody id="bp-admin-body"></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- SURVEY: แบบประเมินความพึงพอใจ -->
@@ -863,6 +888,33 @@
   </div>
 </div>
 
+
+
+<div id="modal-bp-admin-detail" class="hidden modal-overlay">
+  <div class="sc p-6" style="width:980px;max-width:96vw;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;">
+      <div>
+        <h3 id="bp-admin-detail-name" style="font-size:17px;font-weight:800;color:#991b1b;margin:0 0 3px;">รายละเอียดความดันโลหิต</h3>
+        <p id="bp-admin-detail-meta" style="font-size:12px;color:#64748b;margin:0;"></p>
+      </div>
+      <button class="bs" onclick="closeBpAdminDetail()">✕ ปิด</button>
+    </div>
+    <div id="bp-admin-detail-assigned" class="hidden" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#9a3412;"></div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:850px;font-size:11px;">
+        <thead><tr style="background:#f8fafc;">
+          <th style="padding:8px;border:1px solid #e5e7eb;">วันที่</th>
+          <th style="padding:8px;border:1px solid #e5e7eb;">เช้า 1</th>
+          <th style="padding:8px;border:1px solid #e5e7eb;">เช้า 2</th>
+          <th style="padding:8px;border:1px solid #e5e7eb;">ก่อนนอน 1</th>
+          <th style="padding:8px;border:1px solid #e5e7eb;">ก่อนนอน 2</th>
+          <th style="padding:8px;border:1px solid #e5e7eb;">สถานะ</th>
+        </tr></thead>
+        <tbody id="bp-admin-detail-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <div id="modal-group-list" class="hidden modal-overlay">
   <div class="sc p-6" style="width:780px;max-width:95vw;max-height:88vh;overflow-y:auto;">
@@ -2247,15 +2299,196 @@ document.addEventListener('change',function(e){
 });
 
 async function loadBpAdminRecords(){
-  if(!currentAdmin)return;
-  try{const {data,error}=await window._sb.from('bp_home_records').select('*').order('record_date',{ascending:false});if(error)throw error;bpAdminRecords=data||[];renderBpAdminTable();}
-  catch(e){const body=document.getElementById('bp-admin-body');if(body)body.innerHTML='<tr><td colspan="8" style="padding:18px;text-align:center;color:#991b1b;">โหลดข้อมูลไม่ได้: '+escapeSimple(e.message)+'</td></tr>';}
+  if(!currentAdmin) return;
+  try{
+    const {data,error}=await window._sb
+      .from('bp_home_records')
+      .select('*')
+      .order('record_date',{ascending:false});
+    if(error) throw error;
+    bpAdminRecords=data||[];
+    renderBpAdminTable();
+  }catch(e){
+    const body=document.getElementById('bp-admin-body');
+    if(body) body.innerHTML='<tr><td colspan="8" style="padding:18px;text-align:center;color:#991b1b;">โหลดข้อมูลไม่ได้: '+escapeSimple(e.message)+'</td></tr>';
+  }
 }
+
+function getBpAdminPatients(){
+  const recordMap={};
+  records.forEach(function(r){recordMap[String(r.id)]=r;});
+
+  const grouped={};
+
+  bpAdminRecords.forEach(function(bp){
+    const id=String(bp.patient_record_id);
+    if(!grouped[id]){
+      grouped[id]={patient:recordMap[id]||{id:id},records:[],selfRecorded:false,scheduled:false};
+    }
+    grouped[id].records.push(bp);
+    grouped[id].selfRecorded=true;
+  });
+
+  records.forEach(function(r){
+    const appt=r.appointment;
+    const scheduled=appt
+      && appt.type==='appt'
+      && Array.isArray(appt.instructions)
+      && appt.instructions.includes('bp7days');
+
+    if(!scheduled) return;
+
+    const id=String(r.id);
+    if(!grouped[id]){
+      grouped[id]={patient:r,records:[],selfRecorded:false,scheduled:true};
+    }else{
+      grouped[id].patient=r;
+      grouped[id].scheduled=true;
+    }
+  });
+
+  return Object.values(grouped).map(function(g){
+    g.records.sort(function(a,b){
+      return String(b.record_date).localeCompare(String(a.record_date));
+    });
+    return g;
+  });
+}
+
+function getBpAssignedRange(patient){
+  const appt=patient&&patient.appointment;
+  if(!appt||!appt.bpMonitorStartDate) return null;
+  return {start:appt.bpMonitorStartDate,end:addDaysIso(appt.bpMonitorStartDate,6)};
+}
+
+function bpAdminStatusForGroup(g){
+  const range=getBpAssignedRange(g.patient);
+  const allDays=new Set(g.records.map(function(r){return r.record_date;})).size;
+
+  if(g.scheduled&&range){
+    const daysInRange=new Set(
+      g.records
+        .filter(function(r){return r.record_date>=range.start&&r.record_date<=range.end;})
+        .map(function(r){return r.record_date;})
+    ).size;
+
+    if(daysInRange>=7) return {label:'ครบ 7 วัน',bg:'#dcfce7',color:'#166534'};
+    if(daysInRange>0) return {label:'กำลังบันทึก '+daysInRange+'/7 วัน',bg:'#fef9c3',color:'#854d0e'};
+    return {label:'รอเริ่มบันทึก',bg:'#fee2e2',color:'#991b1b'};
+  }
+
+  if(allDays>0) return {label:'บันทึกด้วยตนเอง',bg:'#eff6ff',color:'#1d4ed8'};
+  return {label:'ยังไม่มีข้อมูล',bg:'#f3f4f6',color:'#6b7280'};
+}
+
 function renderBpAdminTable(){
-  const body=document.getElementById('bp-admin-body');if(!body)return;
-  const q=(document.getElementById('bp-admin-search').value||'').trim().toLowerCase(),map={};records.forEach(function(r){map[String(r.id)]=r;});
-  const list=bpAdminRecords.filter(function(x){const p=map[String(x.patient_record_id)]||{};return !q||[p.prefix,p.fname,p.lname,p.idcard,p.hn,p.unit,x.record_date].join(' ').toLowerCase().includes(q);});
-  body.innerHTML=list.length?list.map(function(r){const p=map[String(r.patient_record_id)]||{};return '<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;">'+escapeSimple(r.record_date)+'</td><td style="padding:8px;font-weight:600;">'+escapeSimple([p.prefix,p.fname,p.lname].filter(Boolean).join(' ')||'-')+'</td><td style="padding:8px;">'+escapeSimple(p.hn||'-')+'</td><td style="padding:8px;">'+escapeSimple(p.unit||'-')+'</td><td style="padding:8px;">'+bpReadingText(r.morning_sys1,r.morning_dia1,r.morning_pulse1)+'</td><td style="padding:8px;">'+bpReadingText(r.morning_sys2,r.morning_dia2,r.morning_pulse2)+'</td><td style="padding:8px;">'+bpReadingText(r.evening_sys1,r.evening_dia1,r.evening_pulse1)+'</td><td style="padding:8px;">'+bpReadingText(r.evening_sys2,r.evening_dia2,r.evening_pulse2)+'</td></tr>';}).join(''):'<tr><td colspan="8" style="padding:18px;text-align:center;color:#9ca3af;">ไม่พบข้อมูล</td></tr>';
+  const body=document.getElementById('bp-admin-body');
+  if(!body) return;
+
+  const q=(document.getElementById('bp-admin-search')?.value||'').trim().toLowerCase();
+  const groups=getBpAdminPatients();
+
+  const filtered=groups.filter(function(g){
+    const p=g.patient||{};
+    const hay=[p.prefix,p.fname,p.lname,p.idcard,p.hn,p.unit].join(' ').toLowerCase();
+    return !q||hay.includes(q);
+  });
+
+  const total=groups.length;
+  const self=groups.filter(function(g){return g.selfRecorded;}).length;
+  const scheduled=groups.filter(function(g){return g.scheduled;}).length;
+
+  const summary=document.getElementById('bp-admin-summary');
+  if(summary){
+    summary.innerHTML=[
+      ['ผู้ติดตามทั้งหมด',total,'#991b1b','#fee2e2'],
+      ['บันทึกด้วยตนเอง',self,'#1d4ed8','#eff6ff'],
+      ['เจ้าหน้าที่กำหนดวัด 7 วัน',scheduled,'#9a3412','#fff7ed']
+    ].map(function(x){
+      return '<div class="sc p-3" style="background:'+x[3]+';">'
+        +'<div style="font-size:11px;color:'+x[2]+';font-weight:700;">'+x[0]+'</div>'
+        +'<div style="font-size:24px;color:'+x[2]+';font-weight:800;margin-top:2px;">'+x[1]+' <span style="font-size:12px;font-weight:500;">คน</span></div>'
+        +'</div>';
+    }).join('');
+  }
+
+  if(!filtered.length){
+    body.innerHTML='<tr><td colspan="8" style="padding:20px;text-align:center;color:#9ca3af;">ไม่พบรายชื่อผู้รับบริการ</td></tr>';
+    return;
+  }
+
+  body.innerHTML=filtered.map(function(g){
+    const p=g.patient||{};
+    const range=getBpAssignedRange(p);
+    const days=new Set(g.records.map(function(r){return r.record_date;})).size;
+    const status=bpAdminStatusForGroup(g);
+
+    const sources=[];
+    if(g.selfRecorded) sources.push('ผู้รับบริการบันทึกเอง');
+    if(g.scheduled) sources.push('เจ้าหน้าที่นัด');
+
+    return '<tr style="border-bottom:1px solid #f3f4f6;">'
+      +'<td style="padding:9px;font-weight:700;">'+escapeSimple([p.prefix,p.fname,p.lname].filter(Boolean).join(' ')||'-')+'</td>'
+      +'<td style="padding:9px;text-align:center;">'+escapeSimple(p.hn||'-')+'</td>'
+      +'<td style="padding:9px;text-align:center;">'+escapeSimple(p.unit||'-')+'</td>'
+      +'<td style="padding:9px;text-align:center;">'+escapeSimple(sources.join(' + ')||'-')+'</td>'
+      +'<td style="padding:9px;text-align:center;">'+(range?ceDateToBEDisplay(range.start)+' – '+ceDateToBEDisplay(range.end):'-')+'</td>'
+      +'<td style="padding:9px;text-align:center;font-weight:700;">'+days+' วัน</td>'
+      +'<td style="padding:9px;text-align:center;"><span style="display:inline-block;background:'+status.bg+';color:'+status.color+';border-radius:999px;padding:4px 8px;font-weight:700;">'+status.label+'</span></td>'
+      +'<td style="padding:9px;text-align:center;"><button class="bs" style="padding:5px 9px;font-size:11px;" data-patient-id="'+escapeSimple(String(p.id||''))+'" onclick="openBpAdminDetail(this)">ดูรายละเอียด</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function openBpAdminDetail(btn){
+  const patientId=String(btn.getAttribute('data-patient-id')||'');
+  const g=getBpAdminPatients().find(function(x){
+    return String(x.patient&&x.patient.id)===patientId;
+  });
+  if(!g) return;
+
+  const p=g.patient||{};
+  document.getElementById('bp-admin-detail-name').textContent=
+    [p.prefix,p.fname,p.lname].filter(Boolean).join(' ')||'รายละเอียดความดันโลหิต';
+
+  document.getElementById('bp-admin-detail-meta').textContent=
+    (p.hn?'HN '+p.hn+' | ':'')+(p.unit||'');
+
+  const range=getBpAssignedRange(p);
+  const assigned=document.getElementById('bp-admin-detail-assigned');
+
+  if(range){
+    assigned.classList.remove('hidden');
+    assigned.innerHTML='<b>ช่วงที่เจ้าหน้าที่กำหนด:</b> '
+      +ceDateToBEDisplay(range.start)+' – '+ceDateToBEDisplay(range.end)
+      +(p.appointment&&p.appointment.date?' | นัดพบแพทย์ '+ceDateToBEDisplay(p.appointment.date):'');
+  }else{
+    assigned.classList.add('hidden');
+    assigned.innerHTML='';
+  }
+
+  const body=document.getElementById('bp-admin-detail-body');
+
+  if(!g.records.length){
+    body.innerHTML='<tr><td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;">ยังไม่มีการบันทึกความดัน</td></tr>';
+  }else{
+    body.innerHTML=g.records.map(function(r){
+      return '<tr>'
+        +'<td style="border:1px solid #e5e7eb;padding:8px;text-align:center;">'+ceDateToBEDisplay(r.record_date)+'</td>'
+        +'<td style="border:1px solid #e5e7eb;padding:8px;text-align:center;">'+bpReadingText(r.morning_sys1,r.morning_dia1,r.morning_pulse1)+'</td>'
+        +'<td style="border:1px solid #e5e7eb;padding:8px;text-align:center;">'+bpReadingText(r.morning_sys2,r.morning_dia2,r.morning_pulse2)+'</td>'
+        +'<td style="border:1px solid #e5e7eb;padding:8px;text-align:center;">'+bpReadingText(r.evening_sys1,r.evening_dia1,r.evening_pulse1)+'</td>'
+        +'<td style="border:1px solid #e5e7eb;padding:8px;text-align:center;">'+bpReadingText(r.evening_sys2,r.evening_dia2,r.evening_pulse2)+'</td>'
+        +'<td style="border:1px solid #e5e7eb;padding:8px;text-align:center;">'+(bpAlert(r)?'<span class="rt ta">⚠️ ควรติดตาม</span>':'<span class="rt tn">บันทึกแล้ว</span>')+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+
+  document.getElementById('modal-bp-admin-detail').classList.remove('hidden');
+}
+
+function closeBpAdminDetail(){
+  document.getElementById('modal-bp-admin-detail').classList.add('hidden');
 }
 
 // ======= GROUP LISTS =======
