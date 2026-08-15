@@ -278,6 +278,15 @@
       <h2 style="font-size:17px;font-weight:700;color:#1e293b;margin:0 0 6px;">ดูผลตรวจสุขภาพ</h2>
       <p style="font-size:13px;color:#64748b;margin:0;">เข้าสู่ระบบด้วยเลขบัตรประชาชนและวันเกิด</p>
     </div>
+    <div class="sc p-6" style="cursor:pointer;border:2px solid transparent;grid-column:1 / -1;" onclick="showPage('bp-login')" onmouseover="this.style.borderColor='#dc2626'" onmouseout="this.style.borderColor='transparent'">
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="width:48px;height:48px;background:#fee2e2;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:25px;">🩺</div>
+        <div style="min-width:0;">
+          <h2 style="font-size:17px;font-weight:700;color:#991b1b;margin:0 0 4px;">กลุ่มเสี่ยง / ผู้ป่วยความดันโลหิตสูง</h2>
+          <p style="font-size:13px;color:#64748b;margin:0;">บันทึกความดันโลหิตที่บ้านเป็นรายวัน ข้อมูลของท่านดูได้เฉพาะท่านและเจ้าหน้าที่ผู้ดูแลระบบ</p>
+        </div>
+      </div>
+    </div>
     <div class="sc p-6" style="cursor:pointer;border:2px solid transparent;grid-column:1 / -1;" onclick="showPage('survey')" onmouseover="this.style.borderColor='#c9930f'" onmouseout="this.style.borderColor='transparent'">
       <div style="display:flex;align-items:center;gap:16px;">
         <div style="width:48px;height:48px;background:#fdf3e0;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -291,6 +300,104 @@
     </div>
   </div>
 </div>
+
+<!-- BP HOME MONITORING LOGIN -->
+<div id="page-bp-login" class="hidden" style="max-width:520px;margin:0 auto;">
+  <div class="sc p-6 mb-4">
+    <div style="text-align:center;margin-bottom:18px;">
+      <div style="width:58px;height:58px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:30px;">🩺</div>
+      <h2 style="font-size:19px;font-weight:800;color:#991b1b;margin:0 0 4px;">บันทึกความดันโลหิตที่บ้าน</h2>
+      <p style="font-size:13px;color:#64748b;margin:0;">เข้าสู่ระบบเพื่อบันทึกข้อมูลของตนเอง</p>
+    </div>
+    <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#475569;line-height:1.6;">
+      🔒 ข้อมูลของท่านไม่แสดงแก่ผู้รับบริการรายอื่น และ Admin ที่ได้รับอนุญาตเท่านั้นที่สามารถดูข้อมูลได้
+    </div>
+    <div style="margin-bottom:12px;">
+      <label class="fl">เลขบัตรประชาชน</label>
+      <input type="text" id="bp-login-id" class="fi" maxlength="13" placeholder="13 หลัก" oninput="this.value=this.value.replace(/\D/g,'')">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label class="fl">วันเกิด (พ.ศ.)</label>
+      <div class="dob-wrap">
+        <select id="bp-dob-day" class="fi"><option value="">วัน</option></select>
+        <select id="bp-dob-month" class="fi"><option value="">เดือน</option></select>
+        <select id="bp-dob-year" class="fi"><option value="">ปี พ.ศ.</option></select>
+      </div>
+    </div>
+    <div id="bp-login-error" class="hidden" style="background:#fee2e2;color:#991b1b;padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:12px;"></div>
+    <button class="bp" style="width:100%;" onclick="bpHomeLogin()">เข้าสู่ระบบ</button>
+    <button class="bs" style="width:100%;margin-top:8px;" onclick="showPage('home')">← กลับหน้าหลัก</button>
+  </div>
+</div>
+
+<div id="page-bp-home" class="hidden" style="max-width:960px;margin:0 auto;">
+  <div class="sc p-4 mb-4" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div>
+      <h2 style="font-size:18px;font-weight:800;color:#991b1b;margin:0 0 2px;">🩺 บันทึกความดันโลหิตที่บ้าน</h2>
+      <p id="bp-patient-name" style="font-size:13px;color:#64748b;margin:0;"></p>
+    </div>
+    <button class="bs" style="font-size:13px;" onclick="bpHomeLogout()">ออกจากหน้านี้</button>
+  </div>
+
+  <details class="sc p-4 mb-4" open>
+    <summary style="cursor:pointer;font-size:14px;font-weight:800;color:#374151;">📌 แนวทางการวัดความดันโลหิตที่บ้าน</summary>
+    <div style="font-size:13px;color:#374151;line-height:1.8;margin-top:12px;">
+      <div>1. ใช้เครื่องวัดความดันโลหิตเครื่องเดิม และควรเป็นผู้วัดคนเดิมทุกครั้ง</div>
+      <div>2. วัดในบริเวณที่สงบ นั่งเก้าอี้ที่มีพนักพิง หลังพิงพนัก ไม่ไขว่ห้าง และพัก 1–2 นาทีก่อนวัด</div>
+      <div>3. ระหว่างวัดไม่พูดหรือออกเสียง และงดสูบบุหรี่ ดื่มแอลกอฮอล์ หรือเครื่องดื่มที่มีคาเฟอีนอย่างน้อย 1 ชั่วโมงก่อนวัด</div>
+      <div>4. วางแขนให้แผ่นผ้าพันต้นแขนอยู่ในระดับเดียวกับหัวใจ และไม่วัดผ่านเสื้อผ้าหนา</div>
+      <div>5. <b>ช่วงเช้า:</b> วัดภายใน 1 ชั่วโมงหลังตื่นนอน หลังปัสสาวะ ก่อนรับประทานยาและอาหารเช้า</div>
+      <div>6. <b>ช่วงก่อนนอน:</b> ปฏิบัติเช่นเดียวกับช่วงเช้า และวัดประมาณครึ่งชั่วโมงก่อนเข้านอน</div>
+      <div>7. แต่ละช่วงวัด 2 ครั้ง โดยครั้งที่ 1 และครั้งที่ 2 ห่างกันประมาณ 1 นาที</div>
+      <div style="margin-top:8px;padding:9px 11px;background:#fff7ed;border-radius:8px;color:#9a3412;"><b>หมายเหตุ:</b> หากความดันตัวบนมากกว่า 180 mmHg หรือความดันตัวล่างมากกว่า 110 mmHg ควรติดต่อ/ปรึกษาเจ้าหน้าที่ทางการแพทย์</div>
+    </div>
+  </details>
+
+  <div class="sc p-4 mb-4">
+    <h3 style="font-size:14px;font-weight:800;color:#374151;margin:0 0 12px;">✍️ บันทึกประจำวัน</h3>
+    <div style="display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:end;margin-bottom:14px;">
+      <div><label class="fl">วันที่</label><input type="date" id="bp-record-date" class="fi"></div>
+      <div style="font-size:12px;color:#64748b;">บันทึก 1 รายการต่อวัน และกลับมาแก้ไขข้อมูลของวันเดิมได้</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:760px;font-size:12px;">
+        <thead>
+          <tr style="background:#f8fafc;"><th style="padding:8px;border:1px solid #e5e7eb;"></th><th colspan="3" style="padding:8px;border:1px solid #e5e7eb;">ครั้งที่ 1</th><th colspan="3" style="padding:8px;border:1px solid #e5e7eb;">ครั้งที่ 2</th></tr>
+          <tr style="background:#f8fafc;"><th style="padding:8px;border:1px solid #e5e7eb;">ช่วงเวลา</th><th style="padding:8px;border:1px solid #e5e7eb;">ค่าบน</th><th style="padding:8px;border:1px solid #e5e7eb;">ค่าล่าง</th><th style="padding:8px;border:1px solid #e5e7eb;">ชีพจร</th><th style="padding:8px;border:1px solid #e5e7eb;">ค่าบน</th><th style="padding:8px;border:1px solid #e5e7eb;">ค่าล่าง</th><th style="padding:8px;border:1px solid #e5e7eb;">ชีพจร</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:8px;border:1px solid #e5e7eb;font-weight:700;">ช่วงเช้า<br><span style="font-weight:400;color:#9ca3af;">หลังตื่น ≤ 1 ชม.</span></td>
+            <td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-am-sys1" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-am-dia1" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-am-pulse1" type="number" class="fi"></td>
+            <td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-am-sys2" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-am-dia2" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-am-pulse2" type="number" class="fi"></td>
+          </tr>
+          <tr>
+            <td style="padding:8px;border:1px solid #e5e7eb;font-weight:700;">ช่วงก่อนนอน<br><span style="font-weight:400;color:#9ca3af;">≈ 30 นาที ก่อนนอน</span></td>
+            <td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-pm-sys1" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-pm-dia1" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-pm-pulse1" type="number" class="fi"></td>
+            <td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-pm-sys2" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-pm-dia2" type="number" class="fi"></td><td style="padding:6px;border:1px solid #e5e7eb;"><input id="bp-pm-pulse2" type="number" class="fi"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="bp-save-message" class="hidden" style="margin-top:12px;padding:10px 12px;border-radius:8px;font-size:12px;"></div>
+    <button class="bg" style="width:100%;margin-top:12px;" onclick="saveBpHomeRecord()">💾 บันทึกข้อมูลวันนี้</button>
+  </div>
+
+  <div class="sc p-4 mb-4">
+    <h3 style="font-size:14px;font-weight:800;color:#374151;margin:0 0 12px;">📋 ประวัติที่ท่านบันทึก</h3>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:920px;font-size:11px;"><thead><tr style="background:#991b1b;color:white;"><th style="padding:8px;">วันที่</th><th style="padding:8px;">เช้า 1</th><th style="padding:8px;">เช้า 2</th><th style="padding:8px;">ก่อนนอน 1</th><th style="padding:8px;">ก่อนนอน 2</th><th style="padding:8px;">สถานะ</th></tr></thead><tbody id="bp-history-body"></tbody></table></div>
+  </div>
+</div>
+
+<div id="page-bp-admin" class="hidden" style="max-width:1200px;margin:0 auto;">
+  <div class="sc p-4 mb-4" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div><h2 style="font-size:18px;font-weight:800;color:#991b1b;margin:0 0 2px;">🩺 ข้อมูลความดันโลหิตที่บ้าน</h2><p style="font-size:12px;color:#64748b;margin:0;">สำหรับ Admin — ดูข้อมูลที่ผู้รับบริการบันทึก</p></div>
+    <button class="bs" onclick="showPage('admin')">← กลับ Admin</button>
+  </div>
+  <div class="sc p-4 mb-4"><input id="bp-admin-search" class="fi" placeholder="ค้นหาชื่อ, เลขบัตร, HN หรือหน่วย" oninput="renderBpAdminTable()"></div>
+  <div class="sc" style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:1100px;font-size:11px;"><thead><tr style="background:#991b1b;color:#fff;"><th style="padding:8px;">วันที่</th><th style="padding:8px;">ชื่อ-สกุล</th><th style="padding:8px;">HN</th><th style="padding:8px;">หน่วย</th><th style="padding:8px;">เช้า 1</th><th style="padding:8px;">เช้า 2</th><th style="padding:8px;">ก่อนนอน 1</th><th style="padding:8px;">ก่อนนอน 2</th></tr></thead><tbody id="bp-admin-body"></tbody></table></div>
+</div>
+
 <!-- SURVEY: แบบประเมินความพึงพอใจ -->
 <div id="page-survey" class="hidden" style="max-width:820px;margin:0 auto;">
   <div class="sc p-6 mb-4">
@@ -631,6 +738,7 @@
       <button class="bs" style="font-size:13px;padding:7px 14px;" onclick="showPage('home')">← กลับ</button>
       <button onclick="showPage('manage-admins')" style="background:#7c3aed;color:white;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">👥 จัดการแอดมิน</button>
       <button onclick="showPage('survey-results')" style="background:#0f766e;color:white;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">📊 ผลความพึงพอใจ</button>
+      <button onclick="showPage('bp-admin')" style="background:#991b1b;color:white;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">🩺 ความดันที่บ้าน</button>
       <button class="bg" style="font-size:13px;padding:7px 14px;" onclick="exportAllExcel()">⬇ Export Excel (รง.ผสต.11)</button>
       <button onclick="adminLogout()" style="background:#fee2e2;color:#dc2626;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;border:none;">🚪 ออกจากระบบ</button>
     </div>
@@ -737,6 +845,27 @@
         <tbody id="survey-results-tbody"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+
+<div id="modal-group-list" class="hidden modal-overlay">
+  <div class="sc p-6" style="width:780px;max-width:95vw;max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:14px;"><div><h3 id="group-list-title" style="font-size:16px;font-weight:800;color:#1e293b;margin:0;">รายชื่อ</h3><p id="group-list-count" style="font-size:12px;color:#64748b;margin:2px 0 0;"></p></div><button class="bs" style="padding:7px 12px;" onclick="closeGroupList()">✕ ปิด</button></div>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:650px;"><thead><tr style="background:#f8fafc;"><th style="padding:8px;text-align:center;font-size:12px;">ลำดับ</th><th style="padding:8px;text-align:left;font-size:12px;">ชื่อ-สกุล</th><th style="padding:8px;text-align:left;font-size:12px;">หน่วย</th><th style="padding:8px;text-align:center;font-size:12px;">BMI</th><th style="padding:8px;text-align:center;font-size:12px;">CVD Risk</th><th style="padding:8px;text-align:center;font-size:12px;">ดูข้อมูล</th></tr></thead><tbody id="group-list-body"></tbody></table></div>
+  </div>
+</div>
+
+<div id="modal-cvd-score" class="hidden modal-overlay">
+  <div class="sc p-6" style="width:460px;max-width:94vw;">
+    <h3 style="font-size:16px;font-weight:800;color:#7f1621;margin:0 0 4px;">❤️ บันทึก CVD Risk Score</h3>
+    <p id="cvd-person-name" style="font-size:12px;color:#64748b;margin:0 0 16px;"></p>
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;font-size:12px;color:#9a3412;line-height:1.6;margin-bottom:14px;">กรุณากรอกคะแนนที่ประเมิน/ยืนยันโดยบุคลากรทางการแพทย์ ระบบนี้ยังไม่คำนวณ Thai CV Risk Score อัตโนมัติ</div>
+    <label class="fl">CVD Risk Score (ความเสี่ยง 10 ปี) %</label>
+    <input id="cvd-score-input" class="fi" type="number" min="0" max="100" step="0.1" placeholder="เช่น 8.5">
+    <label class="fl" style="margin-top:12px;">หมายเหตุ (ถ้ามี)</label>
+    <textarea id="cvd-note-input" class="fi" rows="3"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;"><button class="bs" onclick="closeCvdScore()">ยกเลิก</button><button class="bg" onclick="saveCvdScore()">บันทึก</button></div>
   </div>
 </div>
 
@@ -1487,6 +1616,7 @@ window.renderAdminNcdDashboard = async function(records) {
     bmiOver: 0,
     alcohol: 0,
     smoke: 0,
+    cvdHas: 0,
   };
   records.forEach(r => {
     if (r.pdfData || (r.images && r.images.length)) stats.hasPdf++;
@@ -1498,32 +1628,29 @@ window.renderAdminNcdDashboard = async function(records) {
     if (smk >= 3) stats.smoke++;
     if (r.ncdRisk === 'high') stats.ncdHigh++;
     else if (r.ncdRisk === 'medium') stats.ncdMedium++;
+    if (Number.isFinite(parseFloat(r.cvdRiskScore))) stats.cvdHas++;
   });
-  function statCard(icon, label, val, total, color) {
+  function statCard(icon, label, val, total, color, onclick) {
     const p = total > 0 ? Math.round(val / total * 100) : 0;
-    return `<div style="background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:.875rem 1rem">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
-        <span style="font-size:20px">${icon}</span>
-        <span style="font-size:13px;color:#888">${label}</span>
-      </div>
+    return `<div onclick="${onclick||''}" style="background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:.875rem 1rem;${onclick?'cursor:pointer;':''}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem"><span style="font-size:20px">${icon}</span><span style="font-size:13px;color:#888">${label}</span></div>
       <div style="font-size:26px;font-weight:500;color:${color}">${val} <span style="font-size:14px;font-weight:400;color:#888">คน</span></div>
-      <div style="height:5px;background:#ebebeb;border-radius:4px;margin-top:.5rem;overflow:hidden">
-        <div style="height:100%;width:${p}%;background:${color};border-radius:4px;transition:width .6s"></div>
-      </div>
-      <div style="font-size:11px;color:#aaa;margin-top:3px">${p}% จาก ${total} คนทั้งหมด</div>
+      <div style="height:5px;background:#ebebeb;border-radius:4px;margin-top:.5rem;overflow:hidden"><div style="height:100%;width:${p}%;background:${color};border-radius:4px;transition:width .6s"></div></div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">${p}% จาก ${total} คนทั้งหมด${onclick?' · กดดูรายชื่อ':''}</div>
     </div>`;
   }
   el.innerHTML = `
     <div class="sc p-4 mb-2">
       <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 12px;">📊 สรุปภาพรวมสุขภาพ</h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
-        ${statCard('🏥','ผู้รับบริการทั้งหมด',stats.total,stats.total,'#185FA5')}
-        ${statCard('📄','มีผลตรวจแนบ',stats.hasPdf,stats.total,'#639922')}
-        ${statCard('🔴','เสี่ยง NCDs สูง',stats.ncdHigh,stats.total,'#E24B4A')}
-        ${statCard('🟡','เสี่ยง NCDs ปานกลาง',stats.ncdMedium,stats.total,'#EF9F27')}
-        ${statCard('⚖️','BMI เกิน 25',stats.bmiOver,stats.total,'#854F0B')}
-        ${statCard('🍺','ดื่มสุราเป็นประจำ',stats.alcohol,stats.total,'#6C3483')}
-        ${statCard('🚬','สูบบุหรี่เป็นประจำ',stats.smoke,stats.total,'#555555')}
+        ${statCard('🏥','ผู้รับบริการทั้งหมด',stats.total,stats.total,'#185FA5',`openGroupList('all','','ผู้รับบริการทั้งหมด')`)}
+        ${statCard('📄','มีผลตรวจแนบ',stats.hasPdf,stats.total,'#639922',`openGroupList('hasPdf','','ผู้มีผลตรวจแนบ')`)}
+        ${statCard('🔴','เสี่ยง NCDs สูง',stats.ncdHigh,stats.total,'#E24B4A',`openGroupList('ncdRisk','high','เสี่ยง NCDs สูง')`)}
+        ${statCard('🟡','เสี่ยง NCDs ปานกลาง',stats.ncdMedium,stats.total,'#EF9F27',`openGroupList('ncdRisk','medium','เสี่ยง NCDs ปานกลาง')`)}
+        ${statCard('❤️','มี CVD Risk Score',stats.cvdHas,stats.total,'#be123c',`openGroupList('cvdHas','','ผู้ที่มี CVD Risk Score')`)}
+        ${statCard('⚖️','BMI เกิน 25',stats.bmiOver,stats.total,'#854F0B',`openGroupList('bmiOver','','BMI เกิน 25')`)}
+        ${statCard('🍺','ดื่มสุราเป็นประจำ',stats.alcohol,stats.total,'#6C3483',`openGroupList('alcohol','','ดื่มสุราเป็นประจำ')`)}
+        ${statCard('🚬','สูบบุหรี่เป็นประจำ',stats.smoke,stats.total,'#555555',`openGroupList('smoke','','สูบบุหรี่เป็นประจำ')`)}
       </div>
     </div>`;
 };
@@ -1864,12 +1991,13 @@ function dobToDisplay(val){
 }
 // ======= NAV =======
 function showPage(p){
-  ['home','survey','register','login','result','success','admin','manage-admins','survey-results','thankyou'].forEach(function(x){
+  ['home','survey','register','login','result','success','admin','manage-admins','survey-results','bp-login','bp-home','bp-admin','thankyou'].forEach(function(x){
     document.getElementById('page-'+x).classList.add('hidden');
   });
   document.getElementById('page-'+p).classList.remove('hidden');
   if(p==='register'){ initQ(); goStep(1,true); initDOBDropdowns('f-dob-day','f-dob-month','f-dob-year'); }
   if(p==='login'){ initDOBDropdowns('login-dob-day','login-dob-month','login-dob-year'); }
+  if(p==='bp-login'){ initDOBDropdowns('bp-dob-day','bp-dob-month','bp-dob-year'); }
   if(p==='survey'){ initSurveyForm(); }
   if(p==='admin'){
     renderAdmin();
@@ -1878,8 +2006,97 @@ function showPage(p){
   }
   if(p==='manage-admins') renderAdminList();
   if(p==='survey-results') loadSurveyResults();
+  if(p==='bp-admin') loadBpAdminRecords();
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+// ======= BP HOME MONITORING =======
+let bpPatient=null, bpCredentials=null, bpOwnRecords=[], bpAdminRecords=[];
+
+function bpValue(id){const e=document.getElementById(id);if(!e||e.value==='')return null;const n=parseInt(e.value,10);return Number.isFinite(n)?n:null;}
+function bpReadingText(sys,dia,pulse){if(sys===null&&dia===null&&pulse===null)return '-';return (sys??'-')+'/'+(dia??'-')+' mmHg · P '+(pulse??'-');}
+function bpAlert(r){return [[r.morning_sys1,r.morning_dia1],[r.morning_sys2,r.morning_dia2],[r.evening_sys1,r.evening_dia1],[r.evening_sys2,r.evening_dia2]].some(function(p){return (p[0]!==null&&p[0]>180)||(p[1]!==null&&p[1]>110);});}
+
+async function bpHomeLogin(){
+  const id=document.getElementById('bp-login-id').value.trim();
+  const dob=getDOBValue('bp-dob-day','bp-dob-month','bp-dob-year');
+  const err=document.getElementById('bp-login-error');err.classList.add('hidden');
+  if(id.length!==13||!dob){err.textContent='กรุณากรอกเลขบัตรประชาชน 13 หลักและวันเกิดให้ครบ';err.classList.remove('hidden');return;}
+  try{
+    const {data,error}=await window._sb.rpc('get_own_record',{p_idcard:id,p_dob:dob});if(error)throw error;
+    const found=data||[];if(!found.length){err.textContent='ไม่พบข้อมูล หรือเลขบัตร/วันเกิดไม่ถูกต้อง';err.classList.remove('hidden');return;}
+    bpPatient=found[found.length-1];bpCredentials={idcard:id,dob:dob};
+    document.getElementById('bp-patient-name').textContent=[bpPatient.prefix,bpPatient.fname,bpPatient.lname].filter(Boolean).join(' ')+(bpPatient.hn?' | HN '+bpPatient.hn:'');
+    document.getElementById('bp-record-date').value=new Date().toISOString().slice(0,10);
+    await loadOwnBpRecords();showPage('bp-home');
+  }catch(e){err.textContent='เข้าสู่ระบบไม่ได้: '+e.message;err.classList.remove('hidden');}
+}
+function bpHomeLogout(){bpPatient=null;bpCredentials=null;bpOwnRecords=[];showPage('home');}
+
+async function loadOwnBpRecords(){
+  if(!bpCredentials)return;
+  const {data,error}=await window._sb.rpc('get_own_bp_records',{p_idcard:bpCredentials.idcard,p_dob:bpCredentials.dob});if(error)throw error;
+  bpOwnRecords=data||[];renderOwnBpRecords();loadBpDateIntoForm(document.getElementById('bp-record-date').value);
+}
+function renderOwnBpRecords(){
+  const body=document.getElementById('bp-history-body');if(!body)return;
+  if(!bpOwnRecords.length){body.innerHTML='<tr><td colspan="6" style="padding:18px;text-align:center;color:#9ca3af;">ยังไม่มีข้อมูลที่บันทึก</td></tr>';return;}
+  body.innerHTML=bpOwnRecords.map(function(r){return '<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;text-align:center;">'+escapeSimple(r.record_date)+'</td><td style="padding:8px;text-align:center;">'+bpReadingText(r.morning_sys1,r.morning_dia1,r.morning_pulse1)+'</td><td style="padding:8px;text-align:center;">'+bpReadingText(r.morning_sys2,r.morning_dia2,r.morning_pulse2)+'</td><td style="padding:8px;text-align:center;">'+bpReadingText(r.evening_sys1,r.evening_dia1,r.evening_pulse1)+'</td><td style="padding:8px;text-align:center;">'+bpReadingText(r.evening_sys2,r.evening_dia2,r.evening_pulse2)+'</td><td style="padding:8px;text-align:center;">'+(bpAlert(r)?'<span class="rt ta">⚠️ ควรปรึกษาเจ้าหน้าที่</span>':'<span class="rt tn">บันทึกแล้ว</span>')+'</td></tr>';}).join('');
+}
+function loadBpDateIntoForm(date){
+  const r=bpOwnRecords.find(function(x){return x.record_date===date;});
+  const ids=['bp-am-sys1','bp-am-dia1','bp-am-pulse1','bp-am-sys2','bp-am-dia2','bp-am-pulse2','bp-pm-sys1','bp-pm-dia1','bp-pm-pulse1','bp-pm-sys2','bp-pm-dia2','bp-pm-pulse2'];
+  const vals=r?[r.morning_sys1,r.morning_dia1,r.morning_pulse1,r.morning_sys2,r.morning_dia2,r.morning_pulse2,r.evening_sys1,r.evening_dia1,r.evening_pulse1,r.evening_sys2,r.evening_dia2,r.evening_pulse2]:new Array(12).fill('');
+  ids.forEach(function(id,i){document.getElementById(id).value=vals[i]??'';});
+}
+async function saveBpHomeRecord(){
+  if(!bpCredentials)return;
+  const date=document.getElementById('bp-record-date').value;if(!date){alert('กรุณาเลือกวันที่');return;}
+  const args={p_idcard:bpCredentials.idcard,p_dob:bpCredentials.dob,p_record_date:date,p_morning_sys1:bpValue('bp-am-sys1'),p_morning_dia1:bpValue('bp-am-dia1'),p_morning_pulse1:bpValue('bp-am-pulse1'),p_morning_sys2:bpValue('bp-am-sys2'),p_morning_dia2:bpValue('bp-am-dia2'),p_morning_pulse2:bpValue('bp-am-pulse2'),p_evening_sys1:bpValue('bp-pm-sys1'),p_evening_dia1:bpValue('bp-pm-dia1'),p_evening_pulse1:bpValue('bp-pm-pulse1'),p_evening_sys2:bpValue('bp-pm-sys2'),p_evening_dia2:bpValue('bp-pm-dia2'),p_evening_pulse2:bpValue('bp-pm-pulse2')};
+  const hasAny=Object.keys(args).some(function(k){return (k.indexOf('p_morning')===0||k.indexOf('p_evening')===0)&&args[k]!==null;});if(!hasAny){alert('กรุณากรอกค่าความดันอย่างน้อย 1 ครั้ง');return;}
+  const msg=document.getElementById('bp-save-message');
+  try{const {error}=await window._sb.rpc('upsert_own_bp_record',args);if(error)throw error;msg.className='';msg.style.background='#dcfce7';msg.style.color='#166534';msg.textContent='✅ บันทึกข้อมูลเรียบร้อยแล้ว';await loadOwnBpRecords();}
+  catch(e){msg.className='';msg.style.background='#fee2e2';msg.style.color='#991b1b';msg.textContent='❌ บันทึกไม่สำเร็จ: '+e.message;}
+}
+document.addEventListener('change',function(e){if(e.target&&e.target.id==='bp-record-date')loadBpDateIntoForm(e.target.value);});
+
+async function loadBpAdminRecords(){
+  if(!currentAdmin)return;
+  try{const {data,error}=await window._sb.from('bp_home_records').select('*').order('record_date',{ascending:false});if(error)throw error;bpAdminRecords=data||[];renderBpAdminTable();}
+  catch(e){const body=document.getElementById('bp-admin-body');if(body)body.innerHTML='<tr><td colspan="8" style="padding:18px;text-align:center;color:#991b1b;">โหลดข้อมูลไม่ได้: '+escapeSimple(e.message)+'</td></tr>';}
+}
+function renderBpAdminTable(){
+  const body=document.getElementById('bp-admin-body');if(!body)return;
+  const q=(document.getElementById('bp-admin-search').value||'').trim().toLowerCase(),map={};records.forEach(function(r){map[String(r.id)]=r;});
+  const list=bpAdminRecords.filter(function(x){const p=map[String(x.patient_record_id)]||{};return !q||[p.prefix,p.fname,p.lname,p.idcard,p.hn,p.unit,x.record_date].join(' ').toLowerCase().includes(q);});
+  body.innerHTML=list.length?list.map(function(r){const p=map[String(r.patient_record_id)]||{};return '<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;">'+escapeSimple(r.record_date)+'</td><td style="padding:8px;font-weight:600;">'+escapeSimple([p.prefix,p.fname,p.lname].filter(Boolean).join(' ')||'-')+'</td><td style="padding:8px;">'+escapeSimple(p.hn||'-')+'</td><td style="padding:8px;">'+escapeSimple(p.unit||'-')+'</td><td style="padding:8px;">'+bpReadingText(r.morning_sys1,r.morning_dia1,r.morning_pulse1)+'</td><td style="padding:8px;">'+bpReadingText(r.morning_sys2,r.morning_dia2,r.morning_pulse2)+'</td><td style="padding:8px;">'+bpReadingText(r.evening_sys1,r.evening_dia1,r.evening_pulse1)+'</td><td style="padding:8px;">'+bpReadingText(r.evening_sys2,r.evening_dia2,r.evening_pulse2)+'</td></tr>';}).join(''):'<tr><td colspan="8" style="padding:18px;text-align:center;color:#9ca3af;">ไม่พบข้อมูล</td></tr>';
+}
+
+// ======= GROUP LISTS =======
+function closeGroupList(){document.getElementById('modal-group-list').classList.add('hidden');}
+function openGroupRecord(btn){const id=btn.getAttribute('data-id');closeGroupList();viewAdmin(id);}
+function openGroupList(type,key,title){
+  let list=[];
+  if(type==='all')list=records.slice();
+  else if(type==='hasPdf')list=records.filter(r=>r.pdfData||(r.images&&r.images.length));
+  else if(type==='ncdRisk')list=records.filter(r=>r.ncdRisk===key);
+  else if(type==='bmiOver')list=records.filter(r=>parseFloat(r.bmi||0)>25);
+  else if(type==='alcohol')list=records.filter(r=>parseInt(r.alcohol||0)>=3);
+  else if(type==='smoke')list=records.filter(r=>parseInt(r.smoke||0)>=3);
+  else if(type==='cvdHas')list=records.filter(r=>Number.isFinite(parseFloat(r.cvdRiskScore)));
+  else if(type==='health')list=records.filter(r=>r.colorGroup===key);
+  else if(type==='bmi')list=records.filter(function(r){const b=parseFloat(r.bmi);if(!Number.isFinite(b))return false;if(key==='under')return b<18.5;if(key==='normal')return b>=18.5&&b<23;if(key==='over')return b>=23&&b<25;if(key==='obese')return b>=25;return false;});
+  document.getElementById('group-list-title').textContent=title||'รายชื่อ';document.getElementById('group-list-count').textContent='ทั้งหมด '+list.length+' คน';
+  document.getElementById('group-list-body').innerHTML=list.length?list.map(function(r,i){const cvd=Number.isFinite(parseFloat(r.cvdRiskScore))?parseFloat(r.cvdRiskScore).toFixed(1)+'%':'-';return '<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;text-align:center;">'+(i+1)+'</td><td style="padding:8px;">'+escapeSimple([r.prefix,r.fname,r.lname].filter(Boolean).join(' '))+'</td><td style="padding:8px;">'+escapeSimple(r.unit||'-')+'</td><td style="padding:8px;text-align:center;">'+escapeSimple(r.bmi||'-')+'</td><td style="padding:8px;text-align:center;">'+cvd+'</td><td style="padding:8px;text-align:center;"><button class="bs" style="padding:4px 8px;font-size:11px;" data-id="'+escapeSimple(r.id)+'" onclick="openGroupRecord(this)">ดู</button></td></tr>';}).join(''):'<tr><td colspan="6" style="padding:18px;text-align:center;color:#9ca3af;">ไม่มีรายชื่อในกลุ่มนี้</td></tr>';
+  document.getElementById('modal-group-list').classList.remove('hidden');
+}
+
+// ======= CVD RISK SCORE =======
+let currentCvdRecordId=null;
+function openCvdScore(id){const r=records.find(x=>x.id===id);if(!r)return;currentCvdRecordId=id;document.getElementById('cvd-person-name').textContent=[r.prefix,r.fname,r.lname].filter(Boolean).join(' ')+' | '+(r.unit||'');document.getElementById('cvd-score-input').value=Number.isFinite(parseFloat(r.cvdRiskScore))?r.cvdRiskScore:'';document.getElementById('cvd-note-input').value=r.cvdRiskNote||'';document.getElementById('modal-cvd-score').classList.remove('hidden');}
+function closeCvdScore(){document.getElementById('modal-cvd-score').classList.add('hidden');currentCvdRecordId=null;}
+async function saveCvdScore(){const r=records.find(x=>x.id===currentCvdRecordId);if(!r)return;const raw=document.getElementById('cvd-score-input').value.trim();if(raw===''){delete r.cvdRiskScore;delete r.cvdRiskNote;delete r.cvdRiskUpdatedBy;}else{const score=parseFloat(raw);if(!Number.isFinite(score)||score<0||score>100){alert('กรุณากรอกคะแนน 0–100%');return;}r.cvdRiskScore=score;r.cvdRiskNote=document.getElementById('cvd-note-input').value.trim();r.cvdRiskUpdatedBy=getCurrentAdminAudit();}await updateRecordInSupabase(r);closeCvdScore();renderAdmin();renderAdminNcdDashboard(records);}
+
 // ======= ADMIN LOGIN =======
 function showAdminLogin(){
   document.getElementById('admin-login-user').value='';
@@ -2921,6 +3138,14 @@ function renderResult(r){
     +'<span class="rt '+q8Tag+'" style="margin-top:8px;display:inline-block;">'+q8Txt+'</span>'
     +'<div style="font-size:11px;color:#6b7280;margin-top:8px;">0=ไม่มี | 1-8=น้อย | 9-16=ปานกลาง | 17-46=รุนแรง</div></div>'
     +'</div></div>'
+    +(Number.isFinite(parseFloat(r.cvdRiskScore))
+      ?'<div class="sc p-4 mb-4" style="background:#fff1f2;border-color:#fecdd3;">'
+       +'<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">'
+       +'<div><div style="font-size:13px;font-weight:800;color:#9f1239;">❤️ CVD Risk Score</div><div style="font-size:11px;color:#64748b;margin-top:2px;">ความเสี่ยงโรคหัวใจและหลอดเลือดใน 10 ปี (ค่าที่บุคลากรทางการแพทย์บันทึก)</div></div>'
+       +'<div style="font-size:28px;font-weight:800;color:#be123c;">'+parseFloat(r.cvdRiskScore).toFixed(1)+'%</div></div>'
+       +(r.cvdRiskNote?'<div style="font-size:12px;color:#475569;margin-top:8px;">หมายเหตุ: '+escapeSimple(r.cvdRiskNote)+'</div>':'')
+       +'</div>'
+      :'')
     +buildAppointmentHTML(r)
     +buildAppointmentResponseHTML(r)
     +buildLifestyleAdviceHTML(r);
@@ -3063,9 +3288,10 @@ function renderAdmin(){
     ['🟡 กลุ่มเสี่ยง*',atRisk,'#fef9c3','#854d0e'],
     ['🔴 พบแพทย์',needDoctor,'#fee2e2','#991b1b'],
   ].map(function(x){
-    return '<div style="background:'+x[2]+';border-radius:10px;padding:10px;text-align:center;">'
+    const keys=['green','yellow','red'],titles=['สุขภาพดี','กลุ่มเสี่ยง','พบแพทย์'];
+    return '<div onclick="openGroupList(\'health\',\''+keys[i]+'\',\''+titles[i]+'\')" style="background:'+x[2]+';border-radius:10px;padding:10px;text-align:center;cursor:pointer;">'
       +'<div style="font-size:11px;color:'+x[3]+';font-weight:600;margin-bottom:4px;">'+x[0]+'</div>'
-      +'<div style="font-size:26px;font-weight:800;color:'+x[3]+';">'+x[1]+'</div></div>';
+      +'<div style="font-size:26px;font-weight:800;color:'+x[3]+';">'+x[1]+'</div><div style="font-size:9px;color:'+x[3]+';opacity:.65;">กดดูรายชื่อ</div></div>';
   }).join('')+'<div style="grid-column:span 3;font-size:10px;color:#9ca3af;">*ผิดปกติแต่ยังไม่มีนัด</div>';
   const bmiGroups=[0,0,0,0];
   records.forEach(function(r){
@@ -3079,10 +3305,11 @@ function renderAdmin(){
     ['ท้วม','23-24.9',bmiGroups[2],'#fff7ed','#c2410c'],
     ['อ้วน','≥ 25',bmiGroups[3],'#fee2e2','#991b1b'],
   ].map(function(x){
-    return '<div style="background:'+x[3]+';border-radius:10px;padding:8px;text-align:center;">'
+    const keys=['under','normal','over','obese'];
+    return '<div onclick="openGroupList(\'bmi\',\''+keys[i]+'\',\'กลุ่ม BMI: '+x[0]+'\')" style="background:'+x[3]+';border-radius:10px;padding:8px;text-align:center;cursor:pointer;">'
       +'<div style="font-size:11px;font-weight:700;color:'+x[4]+';margin-bottom:1px;">'+x[0]+'</div>'
       +'<div style="font-size:10px;color:'+x[4]+';opacity:.7;margin-bottom:4px;">BMI '+x[1]+'</div>'
-      +'<div style="font-size:22px;font-weight:800;color:'+x[4]+';">'+x[2]+'</div></div>';
+      +'<div style="font-size:22px;font-weight:800;color:'+x[4]+';">'+x[2]+'</div><div style="font-size:9px;color:'+x[4]+';opacity:.6;">กดดูรายชื่อ</div></div>';
   }).join('');
   const tbody=document.getElementById('admin-tbody');
 if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:#9ca3af;">ยังไม่มีข้อมูล</td></tr>';return;}
@@ -3161,7 +3388,7 @@ if(!records.length){tbody.innerHTML='<tr><td colspan="13" style="text-align:cent
             : '<span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:10px;font-weight:700;">🔄 ขอเลื่อน<br>'+resp.requestedDate+'</span>';
         })()+'</td>'
       +'<td style="padding:8px 10px;text-align:center;font-size:11px;">'+(r.acknowledged?'<span style="color:#16a34a;font-weight:700;">✅ รับทราบแล้ว</span>':'<span style="color:#9ca3af;">ยังไม่รับทราบ</span>')+'</td>'
-      +'<td style="padding:8px 10px;text-align:center;"><button onclick="deleteRecord(\''+r.id+'\')" title="ลบข้อมูล (สำหรับรายการลงทะเบียนซ้ำ)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🗑️</button></td>'
+      +'<td style="padding:8px 10px;text-align:center;"><button onclick="openCvdScore(\''+r.id+'\')" title="บันทึก CVD Risk Score" style="background:#fff1f2;color:#be123c;border:none;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;margin-right:3px;">❤️ CVD</button><button onclick="deleteRecord(\''+r.id+'\')" title="ลบข้อมูล (สำหรับรายการลงทะเบียนซ้ำ)" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:5px 9px;font-size:13px;font-weight:700;cursor:pointer;font-family:Sarabun,sans-serif;">🗑️</button></td>'
       +'</tr>';
   }).join('');
 }
